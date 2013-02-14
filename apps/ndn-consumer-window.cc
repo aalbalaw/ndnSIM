@@ -75,6 +75,7 @@ ConsumerWindow::GetTypeId (void)
 
 ConsumerWindow::ConsumerWindow ()
   : m_payloadSize (1040)
+  , m_window_cnt (0)
   , m_inFlight (0)
 {
 }
@@ -167,7 +168,12 @@ ConsumerWindow::OnContentObject (const Ptr<const ContentObjectHeader> &contentOb
 {
   Consumer::OnContentObject (contentObject, payload);
 
-  m_window = m_window + 1;
+  if (m_window_cnt >= m_window) {
+    m_window++;
+    m_window_cnt = 0;
+  } else {
+    m_window_cnt++;
+  }
 
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
@@ -202,6 +208,7 @@ ConsumerWindow::OnTimeout (uint32_t sequenceNumber)
     {
       // m_window = std::max<uint32_t> (0, m_window - 1);
       m_window = m_initialWindow;
+      m_window_cnt = 0;
     }
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);

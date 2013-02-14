@@ -93,6 +93,7 @@ private:
   bool m_setInitialWindowOnTimeout;
 
   TracedValue<uint32_t> m_window;
+  uint32_t m_window_cnt;
   TracedValue<uint32_t> m_inFlight;
 };
 
