@@ -73,25 +73,11 @@ private:
   uint32_t
   GetWindow () const;
 
-  virtual void
-  SetPayloadSize (uint32_t payload);
-
-  uint32_t
-  GetPayloadSize () const;
-
-  double
-  GetMaxSize () const;
-
-  void
-  SetMaxSize (double size);
-
 private:
-  uint32_t m_payloadSize; // expected payload size
-  double   m_maxSize; // max size to request
-
   uint32_t m_initialWindow;
   bool m_setInitialWindowOnTimeout;
 
+  TracedValue<uint32_t> m_ssthresh;
   TracedValue<uint32_t> m_window;
   uint32_t m_window_cnt;
   TracedValue<uint32_t> m_inFlight;

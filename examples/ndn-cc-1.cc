@@ -54,8 +54,7 @@ main (int argc, char *argv[])
 
   // Install consumer
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindow");
-  consumerHelper.SetAttribute ("PayloadSize", StringValue("1250"));
-  consumerHelper.SetAttribute ("Size", StringValue ("2.0")); // amount of data to request (in megabytes), will be transalted into number of interests based on PayloadSize
+  consumerHelper.SetAttribute ("InitialWindowOnTimeout", StringValue("false"));
 
   consumerHelper.SetPrefix ("/cp2");
   consumerHelper.Install (cp1);
@@ -65,7 +64,7 @@ main (int argc, char *argv[])
   
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetAttribute ("PayloadSize", StringValue("1250"));  
+  producerHelper.SetAttribute ("PayloadSize", StringValue("1250"));
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp1", cp1);
   producerHelper.SetPrefix ("/cp1");
