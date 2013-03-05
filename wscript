@@ -121,6 +121,7 @@ def build(bld):
         "model/ndn-face.h",
         "model/ndn-app-face.h",
         "model/ndn-net-device-face.h",
+        "model/ndn-shaper-net-device-face.h",
         "model/ndn-interest.h",
         "model/ndn-content-object.h",
         "model/ndn-name-components.h",

@@ -87,7 +87,7 @@ private:
   NetDeviceFace& operator= (const NetDeviceFace &); ///< \brief Disabled copy operator
 
   /// \brief callback from lower layers
-  void ReceiveFromNetDevice (Ptr<NetDevice> device,
+  virtual void ReceiveFromNetDevice (Ptr<NetDevice> device,
                              Ptr<const Packet> p,
                              uint16_t protocol,
                              const Address &from,
