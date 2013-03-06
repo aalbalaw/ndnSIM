@@ -15,7 +15,7 @@ CP2     NA          1       7
 link
 
 # srcNode   dstNode     bandwidth   metric  delay   queue
-CP1         R1          10Mbps      1        10ms    20
-R1          R2          1Mbps       1        10ms    20
-R2          CP2         10Mbps      1        10ms    20
+CP1         R1          100Mbps      1        10ms    60
+R1          R2          10Mbps       1        10ms    60
+R2          CP2         100Mbps      1        10ms    60
 

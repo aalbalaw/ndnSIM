@@ -144,10 +144,9 @@ public:
    *
    * @param enable           Enable or disable shaping
    * @param maxInterest      Size of the interest queue (in packets)
-   * @param maxContent       Size of the content queue (in packets)
    */
   void
-  EnableShaper (bool enable = true, uint32_t maxInterest=100, uint32_t maxContent=100);
+  EnableShaper (bool enable = true, uint32_t maxInterest=100);
 
   /**
    * \brief Install Ndn stack on the node
@@ -279,7 +278,6 @@ private:
   uint32_t m_avgInterestSize;
   bool     m_shaperEnabled;
   uint32_t m_maxInterest;
-  uint32_t m_maxContent;
   bool     m_needSetDefaultRoutes;  
 };
 
