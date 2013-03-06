@@ -37,6 +37,7 @@
 #include "ns3/callback.h"
 
 #include "../model/ndn-net-device-face.h"
+#include "../model/ndn-shaper-net-device-face.h"
 #include "../model/ndn-l3-protocol.h"
 
 #include "ns3/ndn-forwarding-strategy.h"
@@ -65,6 +66,7 @@ namespace ndn {
 
 StackHelper::StackHelper ()
   : m_limitsEnabled (false)
+  , m_shaperEnabled (false)
   , m_needSetDefaultRoutes (false)
 {
   m_ndnFactory.         SetTypeId ("ns3::ndn::L3Protocol");
@@ -189,6 +191,17 @@ StackHelper::EnableLimits (bool enable/* = true*/,
   m_avgInterestSize = avgInterest;
 }
 
+void
+StackHelper::EnableShaper (bool enable/* = true*/,
+                           uint32_t maxInterest/*=100*/,
+                           uint32_t maxContent/*=100*/)
+{
+  NS_LOG_INFO ("EnableShaper: " << enable);
+  m_shaperEnabled = enable;
+  m_maxInterest = maxInterest;
+  m_maxContent = maxContent;
+}
+
 Ptr<FaceContainer>
 StackHelper::Install (const NodeContainer &c) const
 {
@@ -247,6 +260,16 @@ StackHelper::Install (Ptr<Node> node) const
       //   continue; // don't create face for a LoopbackNetDevice
 
       Ptr<NetDeviceFace> face;
+      if (m_shaperEnabled)
+        {
+          face = CreateObject<ShaperNetDeviceFace> (node, device);
+          face->SetAttribute("MaxInterest", UintegerValue (m_maxInterest));
+          face->SetAttribute("MaxContent", UintegerValue (m_maxContent));
+        }
+      else
+        {
+          face = CreateObject<NetDeviceFace> (node, device);
+        }
 
       for (std::list< std::pair<TypeId, NetDeviceFaceCreateCallback> >::const_iterator item = m_netDeviceCallbacks.begin ();
            item != m_netDeviceCallbacks.end ();

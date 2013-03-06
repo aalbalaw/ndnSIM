@@ -157,6 +157,16 @@ public:
   EnableLimits (bool enable = true, Time avgRtt=Seconds(0.1), uint32_t avgContentObject=1100, uint32_t avgInterest=40);
 
   /**
+   * @brief Enable Interest shaping (disabled by default)
+   *
+   * @param enable           Enable or disable shaping
+   * @param maxInterest      Size of the interest queue (in packets)
+   * @param maxContent       Size of the content queue (in packets)
+   */
+  void
+  EnableShaper (bool enable = true, uint32_t maxInterest=100, uint32_t maxContent=100);
+
+  /**
    * \brief Install Ndn stack on the node
    *
    * This method will assert if called on a node that already has Ndn object
@@ -294,6 +304,10 @@ private:
   bool     m_needSetDefaultRoutes;
 
   std::list< std::pair<TypeId, NetDeviceFaceCreateCallback> > m_netDeviceCallbacks;
+  bool     m_shaperEnabled;
+  uint32_t m_maxInterest;
+  uint32_t m_maxContent;
+  bool     m_needSetDefaultRoutes;  
 };
 
 } // namespace ndn

@@ -37,10 +37,9 @@ main (int argc, char *argv[])
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
-  ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute::PerOutFaceLimits",
-                                   "Limit", "ns3::ndn::Limits::Rate",
+  ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableLimits (true, Seconds(0.06), 1250, 24); // enable interest limits, set average RTT/content_size/interest_size
+  ndnHelper.EnableShaper (true, 500, 500);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 
