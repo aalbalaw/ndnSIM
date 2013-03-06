@@ -193,13 +193,11 @@ StackHelper::EnableLimits (bool enable/* = true*/,
 
 void
 StackHelper::EnableShaper (bool enable/* = true*/,
-                           uint32_t maxInterest/*=100*/,
-                           uint32_t maxContent/*=100*/)
+                           uint32_t maxInterest/*=100*/)
 {
   NS_LOG_INFO ("EnableShaper: " << enable);
   m_shaperEnabled = enable;
   m_maxInterest = maxInterest;
-  m_maxContent = maxContent;
 }
 
 Ptr<FaceContainer>
@@ -264,7 +262,6 @@ StackHelper::Install (Ptr<Node> node) const
         {
           face = CreateObject<ShaperNetDeviceFace> (node, device);
           face->SetAttribute("MaxInterest", UintegerValue (m_maxInterest));
-          face->SetAttribute("MaxContent", UintegerValue (m_maxContent));
         }
       else
         {

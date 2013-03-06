@@ -39,7 +39,7 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, 500, 500);
+  ndnHelper.EnableShaper (true, 50);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 

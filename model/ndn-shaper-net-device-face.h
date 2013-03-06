@@ -22,6 +22,7 @@
 #include <queue>
 #include "ndn-net-device-face.h"
 #include "ns3/net-device.h"
+#include "ns3/data-rate.h"
 
 namespace ns3 {
 namespace ndn {
@@ -50,6 +51,8 @@ public:
   ShaperNetDeviceFace (Ptr<Node> node, const Ptr<NetDevice> &netDevice);
   virtual ~ShaperNetDeviceFace();
 
+  void SetInRate (DataRate inRate);
+
 protected:
   virtual bool
   SendImpl (Ptr<Packet> p);
@@ -57,6 +60,9 @@ protected:
 private:
   ShaperNetDeviceFace (const ShaperNetDeviceFace &); ///< \brief Disabled copy constructor
   ShaperNetDeviceFace& operator= (const ShaperNetDeviceFace &); ///< \brief Disabled copy operator
+
+  void ShaperOpen ();
+  void ShaperDequeue ();
 
   virtual void ReceiveFromNetDevice (Ptr<NetDevice> device,
                              Ptr<const Packet> p,
@@ -66,15 +72,29 @@ private:
                              NetDevice::PacketType packetType);
 
   std::queue<Ptr<Packet> > m_interestQueue;
-  std::queue<Ptr<Packet> > m_contentQueue;
-
   uint32_t m_maxInterest;
-  uint32_t m_maxContent;
+  double m_headroom;
+
+  uint64_t m_outBitRate;
+  uint64_t m_inBitRate;
 
   uint32_t m_outInterestSize;
   uint32_t m_inInterestSize;
   uint32_t m_outContentSize;
   uint32_t m_inContentSize;
+
+  bool m_outInterestFirst;
+  bool m_inInterestFirst;
+  bool m_outContentFirst;
+  bool m_inContentFirst;
+
+  enum ShaperState
+  {
+    OPEN,
+    BLOCKED
+  };
+
+  ShaperState m_shaperState;
 };
 
 } // namespace ndn
