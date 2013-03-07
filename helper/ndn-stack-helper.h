@@ -161,9 +161,11 @@ public:
    *
    * @param enable           Enable or disable shaping
    * @param maxInterest      Size of the interest queue (in packets)
+   * @param headroom         Headroom in interest shaping to absorb burstiness (0 < headroom < 1)
+   * @param updateInterval   Interval to update observed incoming interest rate
    */
   void
-  EnableShaper (bool enable = true, uint32_t maxInterest=100);
+  EnableShaper (bool enable = true, uint32_t maxInterest=100, double headroom=0.98, Time updateInterval=Seconds(0.1));
 
   /**
    * \brief Install Ndn stack on the node
@@ -305,6 +307,8 @@ private:
   std::list< std::pair<TypeId, NetDeviceFaceCreateCallback> > m_netDeviceCallbacks;
   bool     m_shaperEnabled;
   uint32_t m_maxInterest;
+  double   m_headroom;
+  Time     m_updateInterval;
   bool     m_needSetDefaultRoutes;  
 };
 
