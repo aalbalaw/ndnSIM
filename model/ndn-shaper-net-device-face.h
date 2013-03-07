@@ -78,6 +78,11 @@ private:
   uint64_t m_outBitRate;
   uint64_t m_inBitRate;
 
+  Time m_updateInterval;
+  Time m_lastUpdateTime;
+  uint64_t m_byteSinceLastUpdate;
+  double m_observedInInterestBitRate;
+
   uint32_t m_outInterestSize;
   uint32_t m_inInterestSize;
   uint32_t m_outContentSize;
