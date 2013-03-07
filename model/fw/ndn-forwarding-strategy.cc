@@ -542,12 +542,14 @@ ForwardingStrategy::TrySendOutInterest (Ptr<Face> inFace,
       return false;
     }
 
-  pitEntry->AddOutgoing (outFace);
-
   //transmission
   Ptr<Packet> packetToSend = origPacket->Copy ();
-  outFace->Send (packetToSend);
+  if (!outFace->Send (packetToSend))
+    {
+      return false;
+    }
 
+  pitEntry->AddOutgoing (outFace);
   DidSendOutInterest (inFace, outFace, header, origPacket, pitEntry);
 
   return true;
