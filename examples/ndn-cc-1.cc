@@ -39,7 +39,7 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, 50);
+  ndnHelper.EnableShaper (true);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 
@@ -59,17 +59,18 @@ main (int argc, char *argv[])
   consumerHelper.Install (cp1);
 
   consumerHelper.SetPrefix ("/cp1");
-//  consumerHelper.Install (cp2);
+  consumerHelper.Install (cp2);
   
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetAttribute ("PayloadSize", StringValue("1250"));
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp1", cp1);
+  producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
   producerHelper.SetPrefix ("/cp1");
   producerHelper.Install (cp1);
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp2", cp2);
+  producerHelper.SetAttribute ("PayloadSize", StringValue("500"));
   producerHelper.SetPrefix ("/cp2");
   producerHelper.Install (cp2);
 
