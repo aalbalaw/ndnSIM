@@ -54,12 +54,20 @@ ShaperNetDeviceFace::GetTypeId ()
                  DoubleValue (0.98),
                  MakeDoubleAccessor (&ShaperNetDeviceFace::m_headroom),
                  MakeDoubleChecker<double> ())
+    .AddAttribute ("UpdateInterval",
+                 "Interval to update observed incoming interest rate.",
+                 TimeValue (Seconds(0.1)),
+                 MakeTimeAccessor (&ShaperNetDeviceFace::m_updateInterval),
+                 MakeTimeChecker ())
     ;
   return tid;
 }
 
 ShaperNetDeviceFace::ShaperNetDeviceFace (Ptr<Node> node, const Ptr<NetDevice> &netDevice)
   : NetDeviceFace (node, netDevice)
+  , m_lastUpdateTime (0.0)
+  , m_byteSinceLastUpdate (0)
+  , m_observedInInterestBitRate (0.0)
   , m_outInterestSize (40)
   , m_inInterestSize (40)
   , m_outContentSize (1100)
@@ -170,28 +178,46 @@ ShaperNetDeviceFace::ShaperDequeue ()
 
   m_shaperState = BLOCKED;
 
-  // calculate max shaping rate when there's no demand in the reverse direction
-  double maxBitRate = 1.0 * m_inBitRate * m_outInterestSize / m_inContentSize;
-
-  // calculate min shaping rate when there's infinite demand in the reverse direction
   double r1 = 1.0 * m_inContentSize / m_outInterestSize;
   double r2 = 1.0 * m_outContentSize / m_inInterestSize;
   double c1_over_c2 = 1.0 * m_outBitRate / m_inBitRate;
 
   NS_LOG_LOGIC("r1: " << r1 << ", r2: " << r2);
 
-  double minBitRate;
-  if (c1_over_c2 < (2 * r2) / (r1 * r2 + 1))
-    minBitRate = m_outBitRate / 2.0;
-  else if (c1_over_c2 > (r1 * r2 + 1) / (2 * r1))
-    minBitRate = m_inBitRate / (2 * r1);
-  else
-    minBitRate = (r2 * m_inBitRate - m_outBitRate) / (r1 * r2 - 1);
+  // calculate max shaping rate when there's no demand in the reverse direction
+  double maxBitRate = m_inBitRate / r1;
 
-  // determine actual shaping rate
+  // calculate min shaping rate when there's infinite demand in the reverse direction
+  double minBitRate, expectedInInterestBitRate;
+  if (c1_over_c2 < (2 * r2) / (r1 * r2 + 1))
+    {
+      minBitRate = m_outBitRate / 2.0;
+      expectedInInterestBitRate = m_outBitRate / (2 * r2);
+    }
+  else if (c1_over_c2 > (r1 * r2 + 1) / (2 * r1))
+    {
+      minBitRate = m_inBitRate / (2 * r1);
+      expectedInInterestBitRate = m_inBitRate / 2.0;
+    }
+  else
+    {
+      minBitRate = (r2 * m_inBitRate - m_outBitRate) / (r1 * r2 - 1);
+      expectedInInterestBitRate = (r1 * m_outBitRate - m_inBitRate) / (r1 * r2 - 1);
+    }
+
   NS_LOG_LOGIC("Max shaping rate: " << maxBitRate << "bps, Min shaping rate: " << minBitRate << "bps");
 
-  double shapingBitRate = std::max<double>(maxBitRate, minBitRate);
+  // determine actual shaping rate based on observedInInterestBitRate and expectedInInterestBitRate
+  double shapingBitRate;
+  if (m_observedInInterestBitRate >= expectedInInterestBitRate)
+    shapingBitRate = minBitRate;
+  else if (m_observedInInterestBitRate == 0.0)
+    shapingBitRate = maxBitRate;
+  else
+    shapingBitRate = minBitRate + (maxBitRate - minBitRate) * (m_observedInInterestBitRate / expectedInInterestBitRate);
+
+  NS_LOG_LOGIC("Observed incoming interest rate: " << m_observedInInterestBitRate << "bps, Expected incoming interest rate: " << expectedInInterestBitRate << "bps");
+
   shapingBitRate *= m_headroom;
   Time gap = Seconds (p->GetSize() * 8.0 / shapingBitRate);
 
@@ -223,10 +249,23 @@ ShaperNetDeviceFace::ReceiveFromNetDevice (Ptr<NetDevice> device,
           {
             m_inInterestSize = p->GetSize(); // first sample
             m_inInterestFirst = false;
+            m_lastUpdateTime = Simulator::Now();
+            m_byteSinceLastUpdate = p->GetSize();
           }
         else
           {
             m_inInterestSize += (p->GetSize() - m_inInterestSize) >> 3; // smoothing
+
+            if (Simulator::Now() - m_lastUpdateTime >= m_updateInterval)
+              {
+                m_observedInInterestBitRate = m_byteSinceLastUpdate * 8.0 / (Simulator::Now() - m_lastUpdateTime).GetSeconds();
+                m_lastUpdateTime = Simulator::Now();
+                m_byteSinceLastUpdate = 0;
+              }
+            else
+              {
+                m_byteSinceLastUpdate += p->GetSize();
+              }
           }
 
         break;
