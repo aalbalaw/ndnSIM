@@ -125,7 +125,7 @@ ConsumerWindow::OnContentObject (const Ptr<const ContentObjectHeader> &contentOb
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  AdjustWindowOnContentObject ();
+  AdjustWindowOnContentObject (contentObject, payload);
 
   Consumer::OnContentObject (contentObject, payload);
 
@@ -137,7 +137,7 @@ ConsumerWindow::OnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> p
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  AdjustWindowOnNack ();
+  AdjustWindowOnNack (interest, payload);
 
   Consumer::OnNack (interest, payload);
 
@@ -149,7 +149,7 @@ ConsumerWindow::OnTimeout (uint32_t sequenceNumber)
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  AdjustWindowOnTimeout ();
+  AdjustWindowOnTimeout (sequenceNumber);
 
   Consumer::OnTimeout (sequenceNumber);
 
@@ -157,19 +157,20 @@ ConsumerWindow::OnTimeout (uint32_t sequenceNumber)
 }
 
 void
-ConsumerWindow::AdjustWindowOnNack ()
+ConsumerWindow::AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload)
 {
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
 }
 
 void
-ConsumerWindow::AdjustWindowOnContentObject ()
+ConsumerWindow::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+                                             Ptr<Packet> payload)
 {
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
 }
 
 void
-ConsumerWindow::AdjustWindowOnTimeout ()
+ConsumerWindow::AdjustWindowOnTimeout (uint32_t sequenceNumber)
 {
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
 }

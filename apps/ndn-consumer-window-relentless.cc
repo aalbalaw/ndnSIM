@@ -54,7 +54,8 @@ ConsumerWindowRelentless::~ConsumerWindowRelentless ()
 }
 
 void
-ConsumerWindowRelentless::AdjustWindowOnContentObject ()
+ConsumerWindowRelentless::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+                                                       Ptr<Packet> payload)
 {
   if (m_window < m_ssthresh)
     {
@@ -79,18 +80,12 @@ ConsumerWindowRelentless::AdjustWindowOnContentObject ()
 }
 
 void
-ConsumerWindowRelentless::AdjustWindowOnNack ()
+ConsumerWindowRelentless::AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload)
 {
   m_window = std::max<uint32_t> (0, m_window - 1);
   m_ssthresh = m_window;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
-}
-
-void
-ConsumerWindowRelentless::AdjustWindowOnTimeout ()
-{
-  // do nothing
 }
 
 } // namespace ndn
