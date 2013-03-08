@@ -52,7 +52,7 @@ main (int argc, char *argv[])
   Ptr<Node> cp2 = Names::Find<Node> ("CP2");
 
   // Install consumer
-  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowRelentless");
+  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
 
   consumerHelper.SetPrefix ("/cp2");
   consumerHelper.Install (cp1);

@@ -71,9 +71,10 @@ protected:
   virtual void
   ScheduleNextPacket ();
 
-  virtual void AdjustWindowOnNack ();
-  virtual void AdjustWindowOnContentObject ();
-  virtual void AdjustWindowOnTimeout ();
+  virtual void AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload);
+  virtual void AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+                                            Ptr<Packet> payload);
+  virtual void AdjustWindowOnTimeout (uint32_t sequenceNumber);
 
   uint32_t m_initialWindow;
   TracedValue<uint32_t> m_window;
