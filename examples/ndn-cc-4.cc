@@ -15,7 +15,7 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-1: baseline
+// ndn-cc-4: multiflow
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
@@ -32,7 +32,7 @@ main (int argc, char *argv[])
 
   // Read topology
   AnnotatedTopologyReader topologyReader ("", 25);
-  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-4-node.txt");
+  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-6-node.txt");
   topologyReader.Read ();
 
   // Install CCNx stack on all nodes
@@ -48,34 +48,37 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.InstallAll ();
 
   // Getting containers for the consumer/producer
-  Ptr<Node> cp1 = Names::Find<Node> ("CP1");
-  Ptr<Node> cp2 = Names::Find<Node> ("CP2");
+  Ptr<Node> c1 = Names::Find<Node> ("Src1");
+  Ptr<Node> c2 = Names::Find<Node> ("Src2");
+  Ptr<Node> p1 = Names::Find<Node> ("Dst1");
+  Ptr<Node> p2 = Names::Find<Node> ("Dst2");
 
   // Install consumer
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
 
-  consumerHelper.SetPrefix ("/cp2");
-  consumerHelper.Install (cp1);
+  consumerHelper.SetPrefix ("/p1");
+  consumerHelper.Install (c1);
 
-  consumerHelper.SetPrefix ("/cp1");
-  consumerHelper.Install (cp2);
+  consumerHelper.SetPrefix ("/p2");
+  consumerHelper.SetAttribute ("StartTime", TimeValue (Seconds (5.0)));
+  consumerHelper.Install (c2);
   
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
   producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
 
-  ndnGlobalRoutingHelper.AddOrigins ("/cp1", cp1);
-  producerHelper.SetPrefix ("/cp1");
-  producerHelper.Install (cp1);
+  ndnGlobalRoutingHelper.AddOrigins ("/p1", p1);
+  producerHelper.SetPrefix ("/p1");
+  producerHelper.Install (p1);
 
-  ndnGlobalRoutingHelper.AddOrigins ("/cp2", cp2);
-  producerHelper.SetPrefix ("/cp2");
-  producerHelper.Install (cp2);
+  ndnGlobalRoutingHelper.AddOrigins ("/p2", p2);
+  producerHelper.SetPrefix ("/p2");
+  producerHelper.Install (p2);
 
   // Calculate and install FIBs
   ndnGlobalRoutingHelper.CalculateRoutes ();
 
-  Simulator::Stop (Seconds (10.0));
+  Simulator::Stop (Seconds (20.0));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
     aggTracers = ndn::L3AggregateTracer::InstallAll ("aggregate-trace.txt", Seconds (0.5));

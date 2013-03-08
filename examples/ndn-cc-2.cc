@@ -15,7 +15,7 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-1: baseline
+// ndn-cc-2: asymmetric content payload size
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
@@ -59,16 +59,17 @@ main (int argc, char *argv[])
 
   consumerHelper.SetPrefix ("/cp1");
   consumerHelper.Install (cp2);
-  
+
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp1", cp1);
+  producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
   producerHelper.SetPrefix ("/cp1");
   producerHelper.Install (cp1);
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp2", cp2);
+  producerHelper.SetAttribute ("PayloadSize", StringValue("500"));
   producerHelper.SetPrefix ("/cp2");
   producerHelper.Install (cp2);
 
