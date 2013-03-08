@@ -30,7 +30,7 @@ namespace ndn {
 
 /**
  * @ingroup ndn
- * \brief Ndn application for sending out Interest packets (window-based)
+ * \brief Ndn application for sending out Interest packets (window-based, constant window size, default size: 1)
  *
  * !!! ATTENTION !!! This is highly experimental and relies on experimental features of the simulator.
  * Behavior may be unpredictable if used incorrectly.
@@ -44,6 +44,8 @@ public:
    * \brief Default constructor
    */
   ConsumerWindow ();
+
+  virtual ~ConsumerWindow ();
 
   // From App
   // virtual void
@@ -69,21 +71,20 @@ protected:
   virtual void
   ScheduleNextPacket ();
 
+  virtual void AdjustWindowOnNack ();
+  virtual void AdjustWindowOnContentObject ();
+  virtual void AdjustWindowOnTimeout ();
+
+  uint32_t m_initialWindow;
+  TracedValue<uint32_t> m_window;
+  TracedValue<uint32_t> m_inFlight;
+
 private:
   virtual void
   SetWindow (uint32_t window);
 
   uint32_t
   GetWindow () const;
-
-private:
-  uint32_t m_initialWindow;
-  bool m_setInitialWindowOnTimeout;
-
-  TracedValue<uint32_t> m_ssthresh;
-  TracedValue<uint32_t> m_window;
-  uint32_t m_window_cnt;
-  TracedValue<uint32_t> m_inFlight;
 };
 
 } // namespace ndn

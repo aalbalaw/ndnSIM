@@ -63,17 +63,10 @@ ConsumerWindow::GetTypeId (void)
                    MakeIntegerAccessor (&ConsumerWindow::m_seqMax),
                    MakeIntegerChecker<uint32_t> ())
 
-    .AddAttribute ("InitialWindowOnTimeout", "Set window to initial value when timeout occurs",
-                   BooleanValue (true),
-                   MakeBooleanAccessor (&ConsumerWindow::m_setInitialWindowOnTimeout),
-                   MakeBooleanChecker ())
-
-    .AddTraceSource ("SsthreshTrace",
-                     "Ssthresh that determines whether we are in slow start or congestion avoidance phase",
-                     MakeTraceSourceAccessor (&ConsumerWindow::m_ssthresh))
     .AddTraceSource ("WindowTrace",
                      "Window that controls how many outstanding interests are allowed",
                      MakeTraceSourceAccessor (&ConsumerWindow::m_window))
+
     .AddTraceSource ("InFlight",
                      "Current number of outstanding interests",
                      MakeTraceSourceAccessor (&ConsumerWindow::m_inFlight))
@@ -83,9 +76,11 @@ ConsumerWindow::GetTypeId (void)
 }
 
 ConsumerWindow::ConsumerWindow ()
-  : m_ssthresh (std::numeric_limits<uint32_t>::max ())
-  , m_window_cnt (0)
-  , m_inFlight (0)
+  : m_inFlight (0)
+{
+}
+
+ConsumerWindow::~ConsumerWindow ()
 {
 }
 
@@ -136,29 +131,11 @@ void
 ConsumerWindow::OnContentObject (const Ptr<const ContentObject> &contentObject,
                                      Ptr<Packet> payload)
 {
-  Consumer::OnContentObject (contentObject, payload);
-
-  if (m_window < m_ssthresh)
-    {
-      // in slow start phase
-      m_window++;
-    }
-  else
-    {
-      // in congestion avoidance phase
-      if (m_window_cnt >= m_window)
-        {
-          m_window++;
-          m_window_cnt = 0;
-        }
-      else
-        {
-          m_window_cnt++;
-        }
-    }
-
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
-  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
+
+  AdjustWindowOnContentObject ();
+
+  Consumer::OnContentObject (contentObject, payload);
 
   ScheduleNextPacket ();
 }
@@ -166,17 +143,11 @@ ConsumerWindow::OnContentObject (const Ptr<const ContentObject> &contentObject,
 void
 ConsumerWindow::OnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
-  Consumer::OnNack (interest, payload);
-
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  if (m_window > static_cast<uint32_t> (0))
-    {
-      m_window = std::max<uint32_t> (0, m_window - 1);
-      m_ssthresh = m_window;
-    }
+  AdjustWindowOnNack ();
 
-  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
+  Consumer::OnNack (interest, payload);
 
   ScheduleNextPacket ();
 }
@@ -186,15 +157,29 @@ ConsumerWindow::OnTimeout (uint32_t sequenceNumber)
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  if (m_setInitialWindowOnTimeout)
-    {
-      m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
-      m_window = m_initialWindow;
-      m_window_cnt = 0;
-    }
+  AdjustWindowOnTimeout ();
 
-  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
   Consumer::OnTimeout (sequenceNumber);
+
+  ScheduleNextPacket ();
+}
+
+void
+ConsumerWindow::AdjustWindowOnNack ()
+{
+  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
+}
+
+void
+ConsumerWindow::AdjustWindowOnContentObject ()
+{
+  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
+}
+
+void
+ConsumerWindow::AdjustWindowOnTimeout ()
+{
+  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
 }
 
 void
