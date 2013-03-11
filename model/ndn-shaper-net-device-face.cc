@@ -137,7 +137,7 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
           }
         else
           {
-            m_outContentSize += (p->GetSize() - m_outContentSize) >> 3; // smoothing
+            m_outContentSize += (p->GetSize() - m_outContentSize) / 8.0; // smoothing
           }
 
         return NetDeviceFace::SendImpl (p); // no shaping for content packets
@@ -173,13 +173,13 @@ ShaperNetDeviceFace::ShaperDequeue ()
     }
   else
     {
-      m_outInterestSize += (p->GetSize() - m_outInterestSize) >> 3; // smoothing
+      m_outInterestSize += (p->GetSize() - m_outInterestSize) / 8.0; // smoothing
     }
 
   m_shaperState = BLOCKED;
 
-  double r1 = 1.0 * m_inContentSize / m_outInterestSize;
-  double r2 = 1.0 * m_outContentSize / m_inInterestSize;
+  double r1 = m_inContentSize / m_outInterestSize;
+  double r2 = m_outContentSize / m_inInterestSize;
   double c1_over_c2 = 1.0 * m_outBitRate / m_inBitRate;
 
   NS_LOG_LOGIC("r1: " << r1 << ", r2: " << r2);
@@ -214,7 +214,7 @@ ShaperNetDeviceFace::ShaperDequeue ()
   else if (m_observedInInterestBitRate == 0.0)
     shapingBitRate = maxBitRate;
   else
-    shapingBitRate = minBitRate + (maxBitRate - minBitRate) * (m_observedInInterestBitRate / expectedInInterestBitRate);
+    shapingBitRate = minBitRate + (maxBitRate - minBitRate) * (1.0 - m_observedInInterestBitRate / expectedInInterestBitRate);
 
   NS_LOG_LOGIC("Observed incoming interest rate: " << m_observedInInterestBitRate << "bps, Expected incoming interest rate: " << expectedInInterestBitRate << "bps");
 
@@ -254,7 +254,7 @@ ShaperNetDeviceFace::ReceiveFromNetDevice (Ptr<NetDevice> device,
           }
         else
           {
-            m_inInterestSize += (p->GetSize() - m_inInterestSize) >> 3; // smoothing
+            m_inInterestSize += (p->GetSize() - m_inInterestSize) / 8.0; // smoothing
 
             if (Simulator::Now() - m_lastUpdateTime >= m_updateInterval)
               {
@@ -280,7 +280,7 @@ ShaperNetDeviceFace::ReceiveFromNetDevice (Ptr<NetDevice> device,
           }
         else
           {
-            m_inContentSize += (p->GetSize() - m_inContentSize) >> 3; // smoothing
+            m_inContentSize += (p->GetSize() - m_inContentSize) / 8.0; // smoothing
           }
 
         break;
