@@ -83,10 +83,10 @@ private:
   uint64_t m_byteSinceLastUpdate;
   double m_observedInInterestBitRate;
 
-  uint32_t m_outInterestSize;
-  uint32_t m_inInterestSize;
-  uint32_t m_outContentSize;
-  uint32_t m_inContentSize;
+  double m_outInterestSize;
+  double m_inInterestSize;
+  double m_outContentSize;
+  double m_inContentSize;
 
   bool m_outInterestFirst;
   bool m_inInterestFirst;
