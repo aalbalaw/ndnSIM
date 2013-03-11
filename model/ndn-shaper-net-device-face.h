@@ -51,7 +51,7 @@ public:
   ShaperNetDeviceFace (Ptr<Node> node, const Ptr<NetDevice> &netDevice);
   virtual ~ShaperNetDeviceFace();
 
-  void SetInRate (DataRate inRate);
+  void SetInRate (DataRateValue inRate);
 
 protected:
   virtual bool

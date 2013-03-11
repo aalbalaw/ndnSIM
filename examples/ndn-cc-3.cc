@@ -20,6 +20,7 @@
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/ndn-face-container.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
@@ -75,7 +76,14 @@ main (int argc, char *argv[])
                                    "EnableNACKs", "true");
   ndnHelper.EnableShaper (true);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
-  ndnHelper.InstallAll ();
+  Ptr<ndn::FaceContainer> faces = ndnHelper.InstallAll ();
+  for (ndn::FaceContainer::Iterator i = faces->Begin (); i != faces->End (); ++i)
+    {
+      if (DynamicCast<ndn::ShaperNetDeviceFace> (*i)->GetNetDevice() == devA)
+        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate("10Mbps")));
+      else if (DynamicCast<ndn::ShaperNetDeviceFace> (*i)->GetNetDevice() == devB)
+        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate("1Mbps")));
+    }
 
   // Installing global routing interface on all nodes
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;

@@ -95,10 +95,10 @@ ShaperNetDeviceFace& ShaperNetDeviceFace::operator= (const ShaperNetDeviceFace &
 }
 
 void
-ShaperNetDeviceFace::SetInRate (DataRate inRate)
+ShaperNetDeviceFace::SetInRate (DataRateValue inRate)
 {
   NS_LOG_FUNCTION_NOARGS ();
-  m_inBitRate = inRate.GetBitRate();
+  m_inBitRate = inRate.Get().GetBitRate();
 }
 
 bool
