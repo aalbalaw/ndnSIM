@@ -20,7 +20,7 @@
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
-#include <ns3/ndnSIM/utils/tracers/ndn-l3-rate-tracer.h>
+#include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
 using namespace ns3;
 
@@ -75,13 +75,13 @@ main (int argc, char *argv[])
   // Calculate and install FIBs
   ndnGlobalRoutingHelper.CalculateRoutes ();
 
-  Simulator::Stop (Seconds (10.0));
+  Simulator::Stop (Seconds (60.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
-    aggTracers = ndn::L3AggregateTracer::InstallAll ("aggregate-trace.txt", Seconds (0.5));
+    aggTracers = ndn::L3AggregateTracer::InstallAll ("aggregate-trace.txt", Seconds (60.0));
 
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3RateTracer> > >
-    rateTracers = ndn::L3RateTracer::InstallAll ("rate-trace.txt", Seconds (0.5));
+  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
+   tracers = ndn::AppDelayTracer::InstallAll ("app-delays-trace.txt");
 
   Simulator::Run ();
   Simulator::Destroy ();
