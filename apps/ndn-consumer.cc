@@ -62,6 +62,11 @@ Consumer::GetTypeId (void)
                    MakeIntegerAccessor(&Consumer::m_seq),
                    MakeIntegerChecker<int32_t>())
 
+    .AddAttribute ("RandComponentLenMax", "Maximum length of randomly added component",
+                   IntegerValue (0),
+                   MakeIntegerAccessor(&Consumer::m_randCompLenMax),
+                   MakeIntegerChecker<int32_t>())
+
     .AddAttribute ("Prefix","Name of the Interest",
                    StringValue ("/"),
                    MakeNameAccessor (&Consumer::m_interestName),
@@ -91,6 +96,8 @@ Consumer::Consumer ()
   : m_rand (0, std::numeric_limits<uint32_t>::max ())
   , m_seq (0)
   , m_seqMax (0) // don't request anything
+  , m_randCompLenMax (0) // no random components to be added
+  , m_randCompName () // No random components
 {
   NS_LOG_FUNCTION_NOARGS ();
 
@@ -197,10 +204,22 @@ Consumer::SendPacket ()
       seq = m_seq++;
     }
 
-  //
   Ptr<Name> nameWithSequence = Create<Name> (m_interestName);
+
+  if (m_randCompLenMax) {
+    // Do we have enough characters in the template?
+    if (m_randCompLenMax >= m_randCompName.length()) {
+      // No; re-create the random component name
+      m_randCompName.clear();
+      for (unsigned i = 0; i <= m_randCompLenMax; i++)
+        m_randCompName += ('a' + (m_rand.GetInteger(0, 25)));
+    }
+
+    // Grab the random substring prefix
+    nameWithSequence->Add(m_randCompName.substr(0, m_rand.GetInteger(1, m_randCompLenMax)));
+  }
+
   (*nameWithSequence) (seq);
-  //
 
   Interest interestHeader;
   interestHeader.SetNonce               (m_rand.GetValue ());
@@ -213,6 +232,7 @@ Consumer::SendPacket ()
   Ptr<Packet> packet = Create<Packet> ();
   packet->AddHeader (interestHeader);
   NS_LOG_DEBUG ("Interest packet size: " << packet->GetSize ());
+  NS_LOG_DEBUG ("Interest packet name: " << interestHeader);
 
   WillSendOutInterest (seq);  
 

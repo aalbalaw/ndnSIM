@@ -55,6 +55,7 @@ main (int argc, char *argv[])
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
 
   consumerHelper.SetPrefix ("/cp2");
+  consumerHelper.SetAttribute (std::string("RandComponentLenMax"), IntegerValue(32));
   consumerHelper.Install (cp1);
 
   consumerHelper.SetPrefix ("/cp1");
