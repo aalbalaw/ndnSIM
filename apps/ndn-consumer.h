@@ -130,6 +130,9 @@ protected:
   NameComponents     m_interestName;        ///< \brief NDN Name of the Interest (use NameComponents)
   Time               m_interestLifeTime;    ///< \brief LifeTime for interest packet
 
+  uint32_t        m_randCompLenMax;   ///< @brief maximum length of randomly added component
+  std::string     m_randCompName;     ///< @brief string from which random component names will be built
+
 /// @cond include_hidden
   /**
    * \struct This struct contains sequence numbers of packets to be retransmitted
