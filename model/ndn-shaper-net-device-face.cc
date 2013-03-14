@@ -205,16 +205,15 @@ ShaperNetDeviceFace::ShaperDequeue ()
       expectedInInterestBitRate = (r1 * m_outBitRate - m_inBitRate) / (r1 * r2 - 1);
     }
 
+  expectedInInterestBitRate *= m_headroom;
   NS_LOG_LOGIC("Max shaping rate: " << maxBitRate << "bps, Min shaping rate: " << minBitRate << "bps");
 
   // determine actual shaping rate based on observedInInterestBitRate and expectedInInterestBitRate
   double shapingBitRate;
   if (m_observedInInterestBitRate >= expectedInInterestBitRate)
     shapingBitRate = minBitRate;
-  else if (m_observedInInterestBitRate == 0.0)
-    shapingBitRate = maxBitRate;
   else
-    shapingBitRate = minBitRate + (maxBitRate - minBitRate) * (1.0 - m_observedInInterestBitRate / expectedInInterestBitRate);
+    shapingBitRate = minBitRate + (maxBitRate - minBitRate) * (1.0 - m_observedInInterestBitRate / expectedInInterestBitRate) * (1.0 - m_observedInInterestBitRate / expectedInInterestBitRate);
 
   NS_LOG_LOGIC("Observed incoming interest rate: " << m_observedInInterestBitRate << "bps, Expected incoming interest rate: " << expectedInInterestBitRate << "bps");
 
