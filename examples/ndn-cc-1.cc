@@ -15,7 +15,7 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-1: baseline
+// ndn-cc-1: randomized interest size
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
@@ -59,6 +59,7 @@ main (int argc, char *argv[])
   consumerHelper.Install (cp1);
 
   consumerHelper.SetPrefix ("/cp1");
+  consumerHelper.SetAttribute (std::string("RandComponentLenMax"), IntegerValue(32));
   consumerHelper.Install (cp2);
   
   // Register prefix with global routing controller and install producer
