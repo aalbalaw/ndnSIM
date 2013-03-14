@@ -39,9 +39,9 @@ def build(bld):
             'ndn-congestion-alt-topo-plugin.cc'
             ]
 
-        for i in range(4):
-            obj = bld.create_ns3_program('ndn-cc-%d' % (i + 1), ['ndnSIM'])
-            obj.source = 'ndn-cc-%d.cc' % (i + 1)
+        for i in range(5):
+            obj = bld.create_ns3_program('ndn-cc-%d' % i, ['ndnSIM'])
+            obj.source = 'ndn-cc-%d.cc' % i
 
         obj = bld.create_ns3_program('ndn-tree-tracers', ['ndnSIM'])
         obj.source = 'ndn-tree-tracers.cc'

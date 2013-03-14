@@ -15,12 +15,10 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-3: asymmetric bandwidth
+// ndn-cc-0: baseline
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
-#include "ns3/point-to-point-module.h"
-#include "ns3/ndn-face-container.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
@@ -32,43 +30,10 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.Parse (argc, argv);
 
-  // Setup topology manually
-  NodeContainer nodes;
-  nodes.Create (4);
-
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("100Mbps"));
-  Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("60"));
-
-  PointToPointHelper p2p;
-  p2p.Install (nodes.Get (0), nodes.Get (1));
-  p2p.Install (nodes.Get (2), nodes.Get (3));
-
-  ObjectFactory factory;
-  factory.SetTypeId("ns3::PointToPointNetDevice");
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
-  Ptr<PointToPointNetDevice> devA = factory.Create<PointToPointNetDevice> ();
-  devA->SetAddress (Mac48Address::Allocate ());
-  nodes.Get (1)->AddDevice (devA);
-
-  factory.SetTypeId("ns3::DropTailQueue");
-  Ptr<Queue> queueA = factory.Create<Queue> ();
-  devA->SetQueue (queueA);
-
-  factory.SetTypeId("ns3::PointToPointNetDevice");
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("10Mbps"));
-  Ptr<PointToPointNetDevice> devB = factory.Create<PointToPointNetDevice> ();
-  devB->SetAddress (Mac48Address::Allocate ());
-  nodes.Get (2)->AddDevice (devB);
-
-  factory.SetTypeId("ns3::DropTailQueue");
-  Ptr<Queue> queueB = factory.Create<Queue> ();
-  devB->SetQueue (queueB);
-
-  factory.SetTypeId("ns3::PointToPointChannel");
-  Ptr<PointToPointChannel> channel = factory.Create<PointToPointChannel> ();
-  devA->Attach (channel);
-  devB->Attach (channel);
+  // Read topology
+  AnnotatedTopologyReader topologyReader ("", 25);
+  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-4-node.txt");
+  topologyReader.Read ();
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
@@ -76,22 +41,15 @@ main (int argc, char *argv[])
                                    "EnableNACKs", "true");
   ndnHelper.EnableShaper (true, 60, 0.98);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
-  Ptr<ndn::FaceContainer> faces = ndnHelper.InstallAll ();
-  for (ndn::FaceContainer::Iterator i = faces->Begin (); i != faces->End (); ++i)
-    {
-      if (DynamicCast<ndn::ShaperNetDeviceFace> (*i)->GetNetDevice() == devA)
-        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate("10Mbps")));
-      else if (DynamicCast<ndn::ShaperNetDeviceFace> (*i)->GetNetDevice() == devB)
-        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate("1Mbps")));
-    }
+  ndnHelper.InstallAll ();
 
   // Installing global routing interface on all nodes
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
   ndnGlobalRoutingHelper.InstallAll ();
 
   // Getting containers for the consumer/producer
-  Ptr<Node> cp1 = nodes.Get (0);
-  Ptr<Node> cp2 = nodes.Get (3);
+  Ptr<Node> cp1 = Names::Find<Node> ("CP1");
+  Ptr<Node> cp2 = Names::Find<Node> ("CP2");
 
   // Install consumer
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
