@@ -59,10 +59,13 @@ main (int argc, char *argv[])
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
 
   consumerHelper.SetPrefix ("/cp2");
+  UniformVariable r (0.0, 5.0);
+  consumerHelper.SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
   consumerHelper.SetAttribute (std::string("RandComponentLenMax"), IntegerValue(32));
   consumerHelper.Install (cp1);
 
   consumerHelper.SetPrefix ("/cp1");
+  consumerHelper.SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
   consumerHelper.SetAttribute (std::string("RandComponentLenMax"), IntegerValue(32));
   consumerHelper.Install (cp2);
   
@@ -81,10 +84,10 @@ main (int argc, char *argv[])
   // Calculate and install FIBs
   ndnGlobalRoutingHelper.CalculateRoutes ();
 
-  Simulator::Stop (Seconds (60.1));
+  Simulator::Stop (Seconds (70.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
-    aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (60.0));
+    aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
     tracers = ndn::AppDelayTracer::InstallAll (delay_trace);
