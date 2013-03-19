@@ -60,6 +60,14 @@ Producer::GetTypeId (void)
                    UintegerValue (1024),
                    MakeUintegerAccessor(&Producer::m_virtualPayloadSize),
                    MakeUintegerChecker<uint32_t>())
+    .AddAttribute ("RandomPayloadSizeMin", "Virtual min random payload size for Content packets",
+                   UintegerValue (0),
+                   MakeUintegerAccessor(&Producer::m_virtualRandPayloadSizeMin),
+                   MakeUintegerChecker<uint32_t>())
+    .AddAttribute ("RandomPayloadSizeMax", "Virtual max random payload size for Content packets",
+                   UintegerValue (0),
+                   MakeUintegerAccessor(&Producer::m_virtualRandPayloadSizeMax),
+                   MakeUintegerChecker<uint32_t>())
     .AddAttribute ("Freshness", "Freshness of data packets, if 0, then unlimited freshness",
                    TimeValue (Seconds (0)),
                    MakeTimeAccessor (&Producer::m_freshness),
@@ -111,6 +119,7 @@ void
 Producer::OnInterest (const Ptr<const InterestHeader> &interest, Ptr<Packet> origPacket)
 {
   App::OnInterest (interest, origPacket); // tracing inside
+  int packet_size;
 
   NS_LOG_FUNCTION (this << interest);
 
@@ -122,9 +131,15 @@ Producer::OnInterest (const Ptr<const InterestHeader> &interest, Ptr<Packet> ori
   header->SetFreshness (m_freshness);
 
   NS_LOG_INFO ("node("<< GetNode()->GetId() <<") respodning with ContentObject:\n" << boost::cref(*header));
+
+  if (m_virtualRandPayloadSizeMax) {
+    packet_size = m_rand.GetInteger(m_virtualRandPayloadSizeMin, m_virtualRandPayloadSizeMax);
+  } else {
+    packet_size = m_virtualPayloadSize;
+  }
   
-  Ptr<Packet> packet = Create<Packet> (m_virtualPayloadSize);
-  
+  Ptr<Packet> packet = Create<Packet> (packet_size);
+
   packet->AddHeader (*header);
   packet->AddTrailer (tail);
 
