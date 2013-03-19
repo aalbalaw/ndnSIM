@@ -33,7 +33,7 @@ def build(bld):
             'ndn-congestion-alt-topo-plugin.cc'
             ]
 
-        for i in range(5):
+        for i in range(7):
             obj = bld.create_ns3_program('ndn-cc-%d' % i, ['ndnSIM'])
             obj.source = 'ndn-cc-%d.cc' % i
 

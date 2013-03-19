@@ -15,7 +15,7 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-4: one-way multiflow with homogeneous RTT
+// ndn-cc-6: two-way traffic with heterogeneous RTT
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
@@ -36,7 +36,7 @@ main (int argc, char *argv[])
 
   // Read topology
   AnnotatedTopologyReader topologyReader ("", 25);
-  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-6-node.txt");
+  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-6-node-heterogeneous-rtt.txt");
   topologyReader.Read ();
 
   // Install CCNx stack on all nodes
@@ -53,9 +53,9 @@ main (int argc, char *argv[])
 
   // Getting containers for the consumer/producer
   Ptr<Node> c1 = Names::Find<Node> ("Src1");
-  Ptr<Node> c2 = Names::Find<Node> ("Src2");
+  Ptr<Node> p2 = Names::Find<Node> ("Src2");
   Ptr<Node> p1 = Names::Find<Node> ("Dst1");
-  Ptr<Node> p2 = Names::Find<Node> ("Dst2");
+  Ptr<Node> c2 = Names::Find<Node> ("Dst2");
 
   // Install consumer
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
