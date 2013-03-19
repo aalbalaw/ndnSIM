@@ -71,7 +71,8 @@ main (int argc, char *argv[])
   
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
+  producerHelper.SetAttribute ("RandomPayloadSizeMin", StringValue("600"));
+  producerHelper.SetAttribute ("RandomPayloadSizeMax", StringValue("1400"));
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp1", cp1);
   producerHelper.SetPrefix ("/cp1");

@@ -263,7 +263,7 @@ Consumer::OnContentObject (const Ptr<const ContentObject> &contentObject,
   // NS_LOG_INFO ("Received content object: " << boost::cref(*contentObject));
 
   uint32_t seq = boost::lexical_cast<uint32_t> (contentObject->GetName ().GetComponents ().back ());
-  NS_LOG_INFO ("< DATA for " << seq);
+  NS_LOG_INFO ("< DATA for " << seq << " is " << payload->GetSize() << " bytes");
 
   int hopCount = -1;
   FwHopCountTag hopCountTag;

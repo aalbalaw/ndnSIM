@@ -26,6 +26,7 @@
 
 #include "ns3/ptr.h"
 #include "ns3/ndn-name.h"
+#include "ns3/random-variable.h"
 #include "ns3/ndn-content-object.h"
 
 namespace ns3 {
@@ -62,6 +63,12 @@ private:
   Name m_prefix;
   uint32_t m_virtualPayloadSize;
   Time m_freshness;
+
+  // Random payload size
+  uint32_t m_virtualRandPayloadSizeMin;
+  uint32_t m_virtualRandPayloadSizeMax;
+
+  UniformVariable m_rand; ///< @brief random payload size
 };
 
 } // namespace ndn
