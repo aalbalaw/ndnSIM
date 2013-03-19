@@ -15,7 +15,7 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-4: one-way multiflow with homogeneous RTT
+// ndn-cc-5: one-way multiflow with heterogeneous RTT
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
@@ -36,7 +36,7 @@ main (int argc, char *argv[])
 
   // Read topology
   AnnotatedTopologyReader topologyReader ("", 25);
-  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-6-node.txt");
+  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-6-node-heterogeneous-rtt.txt");
   topologyReader.Read ();
 
   // Install CCNx stack on all nodes
