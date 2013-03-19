@@ -27,7 +27,11 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
+  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
+
   CommandLine cmd;
+  cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
+  cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
 
   // Read topology
@@ -78,10 +82,10 @@ main (int argc, char *argv[])
   Simulator::Stop (Seconds (60.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
-    aggTracers = ndn::L3AggregateTracer::InstallAll ("aggregate-trace.txt", Seconds (60.0));
+    aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (60.0));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-   tracers = ndn::AppDelayTracer::InstallAll ("app-delays-trace.txt");
+    tracers = ndn::AppDelayTracer::InstallAll (delay_trace);
 
   Simulator::Run ();
   Simulator::Destroy ();
