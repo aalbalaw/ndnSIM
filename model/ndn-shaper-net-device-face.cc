@@ -36,6 +36,55 @@ NS_LOG_COMPONENT_DEFINE ("ndn.ShaperNetDeviceFace");
 namespace ns3 {
 namespace ndn {
 
+class TimestampTag : public Tag
+{
+public:
+  TimestampTag (): m_timestamp (Simulator::Now ()) {}
+
+  static TypeId GetTypeId (void)
+  {
+    static TypeId tid = TypeId ("ns3::ndn::TimestampTag")
+      .SetParent<Tag> ()
+      .AddConstructor<TimestampTag> ()
+    ;
+    return tid;
+  }
+
+  virtual TypeId GetInstanceTypeId (void) const
+  {
+    return GetTypeId ();
+  }
+
+  virtual uint32_t GetSerializedSize (void) const
+  {
+    return 8;
+  }
+
+  virtual void Serialize (TagBuffer i) const
+  {
+    i.WriteU64 (m_timestamp.GetTimeStep());
+  }
+
+  virtual void Deserialize (TagBuffer i)
+  {
+    m_timestamp = Time(i.ReadU64 ());
+  }
+
+  virtual void Print (std::ostream &os) const
+  {
+    os << "Timestamp=" << m_timestamp;
+  }
+
+  Time GetTimestamp (void) const
+  {
+    return m_timestamp;
+  }
+
+private:
+  Time m_timestamp;
+};
+
+
 NS_OBJECT_ENSURE_REGISTERED (ShaperNetDeviceFace);
 
 TypeId
@@ -59,6 +108,16 @@ ShaperNetDeviceFace::GetTypeId ()
                  TimeValue (Seconds(0.1)),
                  MakeTimeAccessor (&ShaperNetDeviceFace::m_updateInterval),
                  MakeTimeChecker ())
+    .AddAttribute ("DelayTarget",
+                 "Target queueing delay.",
+                 TimeValue (Seconds(0.005)),
+                 MakeTimeAccessor (&ShaperNetDeviceFace::m_delayTarget),
+                 MakeTimeChecker ())
+    .AddAttribute ("DelayObserveInterval",
+                 "Interval to observe minimum packet sojourn time.",
+                 TimeValue (Seconds(0.1)),
+                 MakeTimeAccessor (&ShaperNetDeviceFace::m_delayObserveInterval),
+                 MakeTimeChecker ())
     ;
   return tid;
 }
@@ -77,6 +136,10 @@ ShaperNetDeviceFace::ShaperNetDeviceFace (Ptr<Node> node, const Ptr<NetDevice> &
   , m_outContentFirst (true)
   , m_inContentFirst (true)
   , m_shaperState (OPEN)
+  , m_first_above_time (0.0)
+  , m_drop_next (0.0)
+  , m_drop_count (0)
+  , m_dropping (false)
 {
   DataRateValue dataRate;
   netDevice->GetAttribute ("DataRate", dataRate);
@@ -110,10 +173,21 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
   switch (type)
     {
     case HeaderHelper::INTEREST_NDNSIM:
-    case HeaderHelper::INTEREST_CCNB:
       {
+        NS_LOG_LOGIC(this << " shaper qlen: " << m_interestQueue.size());
+
         if(m_interestQueue.size() < m_maxInterest)
           {
+            if (m_dropping && Simulator::Now() >= m_drop_next)
+              {
+                NS_LOG_LOGIC(this << " codel drop");
+                m_drop_count++;
+                m_drop_next += Seconds(m_delayObserveInterval.GetSeconds() / sqrt(m_drop_count));
+                return false;
+              }
+
+            TimestampTag tag;
+            p->AddPacketTag(tag);
             m_interestQueue.push(p);
 
             if (m_shaperState == OPEN)
@@ -123,11 +197,10 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
           }
         else
           {
-            // TODO: trace dropped interests
+            NS_LOG_LOGIC(this << " tail drop");
             return false;
           }
       }
-    case HeaderHelper::CONTENT_OBJECT_CCNB:
     case HeaderHelper::CONTENT_OBJECT_NDNSIM:
       {
         if (m_outContentFirst)
@@ -153,9 +226,21 @@ ShaperNetDeviceFace::ShaperOpen ()
   NS_LOG_FUNCTION_NOARGS ();
 
   if (m_interestQueue.size() > 0)
-    ShaperDequeue();
+    {
+      ShaperDequeue();
+    }
   else
-    m_shaperState = OPEN;
+    {
+      m_shaperState = OPEN;
+
+      if (m_dropping)
+        {
+          // leave dropping state if queue is empty
+          NS_LOG_LOGIC(this << " leave dropping state due to empty queue");
+          m_first_above_time = Seconds(0.0);
+          m_dropping = false;
+        }
+    }
 }
 
 void
@@ -165,6 +250,42 @@ ShaperNetDeviceFace::ShaperDequeue ()
 
   Ptr<Packet> p = m_interestQueue.front ();
   m_interestQueue.pop ();
+
+  TimestampTag tag;
+  p->PeekPacketTag (tag);
+  Time sojourn_time = Simulator::Now() - tag.GetTimestamp ();
+  NS_LOG_LOGIC(this << " sojourn time: " << sojourn_time);
+  p->RemovePacketTag (tag);
+
+  if (m_dropping && sojourn_time < m_delayTarget)
+    {
+      // leave dropping state
+      NS_LOG_LOGIC(this << " leave dropping state due to low delay");
+      m_first_above_time = Seconds(0.0);
+      m_dropping = false;
+    }
+  else if (!m_dropping && sojourn_time >= m_delayTarget)
+    {
+      if (m_first_above_time == Seconds(0.0))
+        {
+          NS_LOG_LOGIC(this << " first above time " << Simulator::Now());
+          m_first_above_time = Simulator::Now() + m_delayObserveInterval;
+        }
+      else if (Simulator::Now() >= m_first_above_time
+               && (Simulator::Now() - m_drop_next < m_delayObserveInterval || Simulator::Now() - m_first_above_time >= m_delayObserveInterval))
+        {
+          // enter dropping state
+          NS_LOG_LOGIC(this << " enter dropping state");
+          m_dropping = true;
+
+          if (Simulator::Now() - m_drop_next < m_delayObserveInterval)
+            m_drop_count = m_drop_count>2 ? m_drop_count-2 : 0;
+          else
+            m_drop_count = 0;
+
+          m_drop_next = Simulator::Now();
+        }
+    }
 
   if (m_outInterestFirst)
     {
