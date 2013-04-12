@@ -100,6 +100,14 @@ private:
   };
 
   ShaperState m_shaperState;
+
+  Time m_first_above_time;
+  Time m_drop_next;
+  uint32_t m_drop_count;
+  bool m_dropping;
+
+  Time m_delayTarget;
+  Time m_delayObserveInterval;
 };
 
 } // namespace ndn
