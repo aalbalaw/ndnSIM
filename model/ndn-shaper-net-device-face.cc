@@ -29,6 +29,7 @@
 #include "ns3/channel.h"
 #include "ns3/ndn-name-components.h"
 #include "ns3/ndn-header-helper.h"
+#include "ns3/ndn-interest.h"
 #include "ns3/simulator.h"
 
 NS_LOG_COMPONENT_DEFINE ("ndn.ShaperNetDeviceFace");
@@ -174,6 +175,12 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
     {
     case HeaderHelper::INTEREST_NDNSIM:
       {
+        Ptr<Packet> packet = p->Copy ();
+        Ptr<InterestHeader> header = Create<InterestHeader> ();
+        packet->RemoveHeader (*header);
+        if (header->GetNack () > 0)
+          return NetDeviceFace::SendImpl (p); // no shaping for NACK packets
+
         NS_LOG_LOGIC(this << " shaper qlen: " << m_interestQueue.size());
 
         if(m_interestQueue.size() < m_maxInterest)
