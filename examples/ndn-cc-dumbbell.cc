@@ -15,10 +15,11 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-4: one-way multiflow with homogeneous RTT
+
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
+#include "ns3/point-to-point-module.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
@@ -27,23 +28,48 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
+  std::string bw_23 ("10Mbps"), lat_23 ("3ms"), bw_35 ("1Gbps"), lat_35 ("1ms"), qsize ("15");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
+  uint32_t qsize_int;
+  std::istringstream (qsize) >> qsize_int;
+
   CommandLine cmd;
+  cmd.AddValue("bw_23", "link bandwidth between 2 and 3", bw_23);
+  cmd.AddValue("lat_23", "link latency between 2 and 3", lat_23);
+  cmd.AddValue("bw_35", "link bandwidth between 3 and 5", bw_35);
+  cmd.AddValue("lat_35", "link latency between 3 and 5", lat_35);
+  cmd.AddValue("qsize", "L2/Shaper queue size", qsize);
   cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
 
-  // Read topology
-  AnnotatedTopologyReader topologyReader ("", 25);
-  topologyReader.SetFileName ("src/ndnSIM/examples/topologies/topo-6-node.txt");
-  topologyReader.Read ();
+  // Setup topology
+  NodeContainer nodes;
+  nodes.Create (6);
+
+  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue (qsize));
+
+  PointToPointHelper p2p;
+  p2p.SetDeviceAttribute("DataRate", StringValue ("1Gbps"));
+  p2p.SetChannelAttribute("Delay", StringValue ("1ms"));
+  p2p.Install (nodes.Get (0), nodes.Get (2));
+  p2p.Install (nodes.Get (1), nodes.Get (2));
+  p2p.Install (nodes.Get (3), nodes.Get (4));
+
+  p2p.SetDeviceAttribute("DataRate", StringValue (bw_23));
+  p2p.SetChannelAttribute("Delay", StringValue (lat_23));
+  p2p.Install (nodes.Get (2), nodes.Get (3));
+
+  p2p.SetDeviceAttribute("DataRate", StringValue (bw_35));
+  p2p.SetChannelAttribute("Delay", StringValue (lat_35));
+  p2p.Install (nodes.Get (3), nodes.Get (5));
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, 60, 0.98);
+  ndnHelper.EnableShaper (true, qsize_int);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 
@@ -52,13 +78,13 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.InstallAll ();
 
   // Getting containers for the consumer/producer
-  Ptr<Node> c1 = Names::Find<Node> ("Src1");
-  Ptr<Node> c2 = Names::Find<Node> ("Src2");
-  Ptr<Node> p1 = Names::Find<Node> ("Dst1");
-  Ptr<Node> p2 = Names::Find<Node> ("Dst2");
+  Ptr<Node> c1 = nodes.Get (0);
+  Ptr<Node> c2 = nodes.Get (1);
+  Ptr<Node> p1 = nodes.Get (4);
+  Ptr<Node> p2 = nodes.Get (5);
 
   // Install consumer
-  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
+  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowCUBIC");
 
   consumerHelper.SetPrefix ("/p1");
   UniformVariable r (0.0, 5.0);
