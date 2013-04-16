@@ -15,7 +15,7 @@
  *
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
-// ndn-cc-3: asymmetric bandwidth
+
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
@@ -29,28 +29,40 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
+  std::string bw_a ("10Mbps"), bw_b ("10Mbps"), lat ("3ms"), qsize ("15");
+  std::string isize ("0"), payload_0 ("1000"), payload_3 ("1000"); 
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
+  uint32_t qsize_int;
+  std::istringstream (qsize) >> qsize_int;
+
   CommandLine cmd;
+  cmd.AddValue("bw_a", "link bandwidth from 1 to 2", bw_a);
+  cmd.AddValue("bw_b", "link bandwidth from 2 to 1", bw_b);
+  cmd.AddValue("lat", "link latency between 1 and 2", lat);
+  cmd.AddValue("qsize", "L2/Shaper queue size", qsize);
+  cmd.AddValue("isize", "Randomized interest size, 0 means not to randomize", isize);
+  cmd.AddValue("payload_0", "Payload size on 0, 0 means randomized between 600B and 1400B", payload_0);
+  cmd.AddValue("payload_3", "Payload size on 3, 0 means randomized between 600B and 1400B", payload_3);
   cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
 
-  // Setup topology manually
+  // Setup topology
   NodeContainer nodes;
   nodes.Create (4);
 
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("100Mbps"));
-  Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("60"));
+  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue (qsize));
 
   PointToPointHelper p2p;
+  p2p.SetDeviceAttribute("DataRate", StringValue ("1Gbps"));
+  p2p.SetChannelAttribute("Delay", StringValue ("1ms"));
   p2p.Install (nodes.Get (0), nodes.Get (1));
   p2p.Install (nodes.Get (2), nodes.Get (3));
 
   ObjectFactory factory;
   factory.SetTypeId("ns3::PointToPointNetDevice");
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
+  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue (bw_a));
   Ptr<PointToPointNetDevice> devA = factory.Create<PointToPointNetDevice> ();
   devA->SetAddress (Mac48Address::Allocate ());
   nodes.Get (1)->AddDevice (devA);
@@ -60,7 +72,7 @@ main (int argc, char *argv[])
   devA->SetQueue (queueA);
 
   factory.SetTypeId("ns3::PointToPointNetDevice");
-  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("10Mbps"));
+  Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue (bw_b));
   Ptr<PointToPointNetDevice> devB = factory.Create<PointToPointNetDevice> ();
   devB->SetAddress (Mac48Address::Allocate ());
   nodes.Get (2)->AddDevice (devB);
@@ -70,6 +82,7 @@ main (int argc, char *argv[])
   devB->SetQueue (queueB);
 
   factory.SetTypeId("ns3::PointToPointChannel");
+  Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue (lat));
   Ptr<PointToPointChannel> channel = factory.Create<PointToPointChannel> ();
   devA->Attach (channel);
   devB->Attach (channel);
@@ -78,15 +91,15 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, 60, 0.98);
+  ndnHelper.EnableShaper (true, qsize_int);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   Ptr<ndn::FaceContainer> faces = ndnHelper.InstallAll ();
   for (ndn::FaceContainer::Iterator i = faces->Begin (); i != faces->End (); ++i)
     {
       if (DynamicCast<ndn::ShaperNetDeviceFace> (*i)->GetNetDevice() == devA)
-        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate("10Mbps")));
+        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate(bw_b)));
       else if (DynamicCast<ndn::ShaperNetDeviceFace> (*i)->GetNetDevice() == devB)
-        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate("1Mbps")));
+        DynamicCast<ndn::ShaperNetDeviceFace> (*i)->SetInRate(DataRateValue(DataRate(bw_a)));
     }
 
   // Installing global routing interface on all nodes
@@ -98,7 +111,9 @@ main (int argc, char *argv[])
   Ptr<Node> cp2 = nodes.Get (3);
 
   // Install consumer
-  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowAIMD");
+  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowCUBIC");
+  if (isize != "0")
+    consumerHelper.SetAttribute (std::string("RandComponentLenMax"), StringValue(isize));
 
   consumerHelper.SetPrefix ("/cp2");
   UniformVariable r (0.0, 5.0);
@@ -111,13 +126,30 @@ main (int argc, char *argv[])
 
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp1", cp1);
+  if (payload_0 != "0")
+    {
+      producerHelper.SetAttribute ("PayloadSize", StringValue(payload_0));
+    }
+  else
+    {
+      producerHelper.SetAttribute ("RandomPayloadSizeMin", StringValue("600"));
+      producerHelper.SetAttribute ("RandomPayloadSizeMax", StringValue("1400"));
+    }
   producerHelper.SetPrefix ("/cp1");
   producerHelper.Install (cp1);
 
   ndnGlobalRoutingHelper.AddOrigins ("/cp2", cp2);
+  if (payload_3 != "0")
+    {
+      producerHelper.SetAttribute ("PayloadSize", StringValue(payload_3));
+    }
+  else
+    {
+      producerHelper.SetAttribute ("RandomPayloadSizeMin", StringValue("600"));
+      producerHelper.SetAttribute ("RandomPayloadSizeMax", StringValue("1400"));
+    }
   producerHelper.SetPrefix ("/cp2");
   producerHelper.Install (cp2);
 

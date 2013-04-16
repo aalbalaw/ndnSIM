@@ -10,9 +10,14 @@ def build(bld):
     obj = bld.create_ns3_program('ndn-grid', all_modules)
     obj.source = 'ndn-grid.cc'
 
+    obj = bld.create_ns3_program('ndn-cc-chain', ['ndnSIM'])
+    obj.source = 'ndn-cc-chain.cc'
+
+    obj = bld.create_ns3_program('ndn-cc-dumbbell', ['ndnSIM'])
+    obj.source = 'ndn-cc-dumbbell.cc'
+
     obj = bld.create_ns3_program('ndn-zipf-mandelbrot', all_modules)
     obj.source = 'ndn-zipf-mandelbrot.cc'
-
 
     obj = bld.create_ns3_program('ndn-simple-with-content-freshness', all_modules)
     obj.source = ['ndn-simple-with-content-freshness.cc',
@@ -38,10 +43,6 @@ def build(bld):
             'custom-strategies/custom-strategy.cc',
             'ndn-congestion-alt-topo-plugin.cc'
             ]
-
-        for i in range(7):
-            obj = bld.create_ns3_program('ndn-cc-%d' % i, ['ndnSIM'])
-            obj.source = 'ndn-cc-%d.cc' % i
 
         obj = bld.create_ns3_program('ndn-tree-tracers', ['ndnSIM'])
         obj.source = 'ndn-tree-tracers.cc'
