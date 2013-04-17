@@ -90,6 +90,8 @@ public:
   QueueMode GetMode (void);
 
 protected:
+  void PIEUpdate ();
+
   virtual bool
   SendImpl (Ptr<Packet> p);
 
@@ -143,6 +145,12 @@ private:
   Time m_delayObserveInterval; // for CoDel
 
   // for PIE
+  double m_old_delay;
+  double m_drop_prob;
+  int64_t m_dq_count;
+  double m_avg_dq_rate;
+  Time m_dq_start;
+  Time m_burst_allowance;
 
   // for CoDel
   Time m_first_above_time;
