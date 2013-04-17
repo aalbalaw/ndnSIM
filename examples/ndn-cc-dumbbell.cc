@@ -20,6 +20,7 @@
 #include "ns3/network-module.h"
 #include "ns3/ndnSIM-module.h"
 #include "ns3/point-to-point-module.h"
+#include "ns3/ndn-shaper-net-device-face.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
@@ -28,18 +29,28 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
+  std::string mode ("DropTail");
   std::string bw_23 ("10Mbps"), lat_23 ("3ms"), bw_35 ("1Gbps"), lat_35 ("1ms"), qsize ("15");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
-  cmd.AddValue("bw_23", "link bandwidth between 2 and 3", bw_23);
-  cmd.AddValue("lat_23", "link latency between 2 and 3", lat_23);
-  cmd.AddValue("bw_35", "link bandwidth between 3 and 5", bw_35);
-  cmd.AddValue("lat_35", "link latency between 3 and 5", lat_35);
+  cmd.AddValue("mode", "Shaper queue mode (DropTail/PIE/CoDel)", mode);
+  cmd.AddValue("bw_23", "Link bandwidth between 2 and 3", bw_23);
+  cmd.AddValue("lat_23", "Link latency between 2 and 3", lat_23);
+  cmd.AddValue("bw_35", "Link bandwidth between 3 and 5", bw_35);
+  cmd.AddValue("lat_35", "Link latency between 3 and 5", lat_35);
   cmd.AddValue("qsize", "L2/Shaper queue size", qsize);
-  cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
-  cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
+  cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
+  cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
+
+  ndn::ShaperNetDeviceFace::QueueMode mode_enum;
+  if (mode == "DropTail")
+    mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_DROPTAIL;
+  else if (mode == "PIE")
+    mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_PIE;
+  else if (mode == "CoDel")
+    mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_CODEL;
 
   uint32_t qsize_int;
   std::istringstream (qsize) >> qsize_int;
@@ -69,7 +80,7 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, qsize_int);
+  ndnHelper.EnableShaper (true, qsize_int, 0.98, Seconds(0.1), mode_enum);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 
