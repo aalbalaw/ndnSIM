@@ -95,30 +95,42 @@ ShaperNetDeviceFace::GetTypeId ()
     .SetParent<NetDeviceFace> ()
     .SetGroupName ("Ndn")
     .AddAttribute ("MaxInterest",
-                 "Size of the interest queue.",
-                 UintegerValue (100),
-                 MakeUintegerAccessor (&ShaperNetDeviceFace::m_maxInterest),
-                 MakeUintegerChecker<uint32_t> ())
+                   "Size of the shaper interest queue.",
+                   UintegerValue (100),
+                   MakeUintegerAccessor (&ShaperNetDeviceFace::m_maxInterest),
+                   MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("Headroom",
-                 "Headroom in interest shaping to absorb burstiness.",
-                 DoubleValue (0.98),
-                 MakeDoubleAccessor (&ShaperNetDeviceFace::m_headroom),
-                 MakeDoubleChecker<double> ())
+                   "Headroom in interest shaping to absorb burstiness.",
+                   DoubleValue (0.98),
+                   MakeDoubleAccessor (&ShaperNetDeviceFace::m_headroom),
+                   MakeDoubleChecker<double> ())
     .AddAttribute ("UpdateInterval",
-                 "Interval to update observed incoming interest rate.",
-                 TimeValue (Seconds(0.1)),
-                 MakeTimeAccessor (&ShaperNetDeviceFace::m_updateInterval),
-                 MakeTimeChecker ())
+                   "Interval to update observed incoming interest rate.",
+                   TimeValue (Seconds(0.1)),
+                   MakeTimeAccessor (&ShaperNetDeviceFace::m_updateInterval),
+                   MakeTimeChecker ())
+    .AddAttribute ("QueueMode", 
+                   "Determine when to reject/drop an interest (DropTail/PIE/CoDel)",
+                   EnumValue (QUEUE_MODE_DROPTAIL),
+                   MakeEnumAccessor (&ShaperNetDeviceFace::SetMode),
+                   MakeEnumChecker (QUEUE_MODE_DROPTAIL, "QUEUE_MODE_DROPTAIL",
+                                    QUEUE_MODE_PIE, "QUEUE_MODE_PIE",
+                                    QUEUE_MODE_CODEL, "QUEUE_MODE_CODEL"))
     .AddAttribute ("DelayTarget",
-                 "Target queueing delay.",
-                 TimeValue (Seconds(0.005)),
-                 MakeTimeAccessor (&ShaperNetDeviceFace::m_delayTarget),
-                 MakeTimeChecker ())
+                   "Target queueing delay (for PIE or CoDel).",
+                   TimeValue (Seconds(0.02)),
+                   MakeTimeAccessor (&ShaperNetDeviceFace::m_delayTarget),
+                   MakeTimeChecker ())
+    .AddAttribute ("MaxBurst",
+                   "Maximum burst allowed before random early drop kicks in (for PIE).",
+                   TimeValue (Seconds(0.1)),
+                   MakeTimeAccessor (&ShaperNetDeviceFace::m_maxBurst),
+                   MakeTimeChecker ())
     .AddAttribute ("DelayObserveInterval",
-                 "Interval to observe minimum packet sojourn time.",
-                 TimeValue (Seconds(0.1)),
-                 MakeTimeAccessor (&ShaperNetDeviceFace::m_delayObserveInterval),
-                 MakeTimeChecker ())
+                   "Interval to observe minimum packet sojourn time (for CoDel).",
+                   TimeValue (Seconds(0.1)),
+                   MakeTimeAccessor (&ShaperNetDeviceFace::m_delayObserveInterval),
+                   MakeTimeChecker ())
     ;
   return tid;
 }
@@ -159,6 +171,20 @@ ShaperNetDeviceFace& ShaperNetDeviceFace::operator= (const ShaperNetDeviceFace &
 }
 
 void
+ShaperNetDeviceFace::SetMode (ShaperNetDeviceFace::QueueMode mode)
+{
+  NS_LOG_FUNCTION (this << mode);
+  m_mode = mode;
+}
+
+ShaperNetDeviceFace::QueueMode
+ShaperNetDeviceFace::GetMode (void)
+{
+  NS_LOG_FUNCTION (this);
+  return m_mode;
+}
+
+void
 ShaperNetDeviceFace::SetInRate (DataRateValue inRate)
 {
   NS_LOG_FUNCTION_NOARGS ();
@@ -185,18 +211,21 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
 
         if(m_interestQueue.size() < m_maxInterest)
           {
-            if (m_dropping && Simulator::Now() >= m_drop_next)
+            if (m_mode == QUEUE_MODE_CODEL)
               {
-                NS_LOG_LOGIC(this << " codel drop");
-                m_drop_count++;
-                m_drop_next += Seconds(m_delayObserveInterval.GetSeconds() / sqrt(m_drop_count));
-                return false;
+                if (m_dropping && Simulator::Now() >= m_drop_next)
+                  {
+                    NS_LOG_LOGIC(this << " codel drop");
+                    m_drop_count++;
+                    m_drop_next += Seconds(m_delayObserveInterval.GetSeconds() / sqrt(m_drop_count));
+                    return false;
+                  }
+
+                TimestampTag tag;
+                p->AddPacketTag(tag);
               }
 
-            TimestampTag tag;
-            p->AddPacketTag(tag);
             m_interestQueue.push(p);
-
             if (m_shaperState == OPEN)
               ShaperDequeue();
 
@@ -240,12 +269,15 @@ ShaperNetDeviceFace::ShaperOpen ()
     {
       m_shaperState = OPEN;
 
-      if (m_dropping)
+      if (m_mode == QUEUE_MODE_CODEL)
         {
-          // leave dropping state if queue is empty
-          NS_LOG_LOGIC(this << " leave dropping state due to empty queue");
-          m_first_above_time = Seconds(0.0);
-          m_dropping = false;
+          if (m_dropping)
+            {
+              // leave dropping state if queue is empty
+              NS_LOG_LOGIC(this << " leave dropping state due to empty queue");
+              m_first_above_time = Seconds(0.0);
+              m_dropping = false;
+            }
         }
     }
 }
@@ -258,39 +290,42 @@ ShaperNetDeviceFace::ShaperDequeue ()
   Ptr<Packet> p = m_interestQueue.front ();
   m_interestQueue.pop ();
 
-  TimestampTag tag;
-  p->PeekPacketTag (tag);
-  Time sojourn_time = Simulator::Now() - tag.GetTimestamp ();
-  NS_LOG_LOGIC(this << " sojourn time: " << sojourn_time);
-  p->RemovePacketTag (tag);
+  if (m_mode == QUEUE_MODE_CODEL)
+    {
+      TimestampTag tag;
+      p->PeekPacketTag (tag);
+      Time sojourn_time = Simulator::Now() - tag.GetTimestamp ();
+      NS_LOG_LOGIC(this << " sojourn time: " << sojourn_time);
+      p->RemovePacketTag (tag);
 
-  if (m_dropping && sojourn_time < m_delayTarget)
-    {
-      // leave dropping state
-      NS_LOG_LOGIC(this << " leave dropping state due to low delay");
-      m_first_above_time = Seconds(0.0);
-      m_dropping = false;
-    }
-  else if (!m_dropping && sojourn_time >= m_delayTarget)
-    {
-      if (m_first_above_time == Seconds(0.0))
+      if (m_dropping && sojourn_time < m_delayTarget)
         {
-          NS_LOG_LOGIC(this << " first above time " << Simulator::Now());
-          m_first_above_time = Simulator::Now() + m_delayObserveInterval;
+          // leave dropping state
+          NS_LOG_LOGIC(this << " leave dropping state due to low delay");
+          m_first_above_time = Seconds(0.0);
+          m_dropping = false;
         }
-      else if (Simulator::Now() >= m_first_above_time
-               && (Simulator::Now() - m_drop_next < m_delayObserveInterval || Simulator::Now() - m_first_above_time >= m_delayObserveInterval))
+      else if (!m_dropping && sojourn_time >= m_delayTarget)
         {
-          // enter dropping state
-          NS_LOG_LOGIC(this << " enter dropping state");
-          m_dropping = true;
+          if (m_first_above_time == Seconds(0.0))
+            {
+              NS_LOG_LOGIC(this << " first above time " << Simulator::Now());
+              m_first_above_time = Simulator::Now() + m_delayObserveInterval;
+            }
+          else if (Simulator::Now() >= m_first_above_time
+                   && (Simulator::Now() - m_drop_next < m_delayObserveInterval || Simulator::Now() - m_first_above_time >= m_delayObserveInterval))
+            {
+              // enter dropping state
+              NS_LOG_LOGIC(this << " enter dropping state");
+              m_dropping = true;
 
-          if (Simulator::Now() - m_drop_next < m_delayObserveInterval)
-            m_drop_count = m_drop_count>2 ? m_drop_count-2 : 0;
-          else
-            m_drop_count = 0;
+              if (Simulator::Now() - m_drop_next < m_delayObserveInterval)
+                m_drop_count = m_drop_count>2 ? m_drop_count-2 : 0;
+              else
+                m_drop_count = 0;
 
-          m_drop_next = Simulator::Now();
+              m_drop_next = Simulator::Now();
+            }
         }
     }
 

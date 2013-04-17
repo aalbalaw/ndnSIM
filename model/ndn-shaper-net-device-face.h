@@ -49,9 +49,45 @@ public:
    * this face will be associate
    */
   ShaperNetDeviceFace (Ptr<Node> node, const Ptr<NetDevice> &netDevice);
+
+  /**
+   * \brief Destructor
+   *
+   */
   virtual ~ShaperNetDeviceFace();
 
+  /**
+   * \brief Set the data rate in the reverse direction (incoming)
+   *
+   * @param inRate Data rate in the reverse direction (incoming)
+   */
   void SetInRate (DataRateValue inRate);
+
+  /**
+   * \brief Enumeration of the queue modes supported by the shaper.
+   *
+   */
+  enum QueueMode
+  {
+    QUEUE_MODE_DROPTAIL,
+    QUEUE_MODE_PIE,
+    QUEUE_MODE_CODEL,
+  };
+
+  /**
+   * Set the queue mode of this shaper.
+   *
+   * \param mode The queue mode of this shaper.
+   *
+   */
+  void SetMode (QueueMode mode);
+
+  /**
+   * Get the queue mode of this shaper.
+   *
+   * \returns The queue mode of this shaper.
+   */
+  QueueMode GetMode (void);
 
 protected:
   virtual bool
@@ -101,13 +137,18 @@ private:
 
   ShaperState m_shaperState;
 
+  QueueMode m_mode;
+  Time m_delayTarget; // for PIE or CoDel
+  Time m_maxBurst; // for PIE
+  Time m_delayObserveInterval; // for CoDel
+
+  // for PIE
+
+  // for CoDel
   Time m_first_above_time;
   Time m_drop_next;
   uint32_t m_drop_count;
   bool m_dropping;
-
-  Time m_delayTarget;
-  Time m_delayObserveInterval;
 };
 
 } // namespace ndn
