@@ -26,6 +26,7 @@
 #include "ns3/ptr.h"
 #include "ns3/object-factory.h"
 #include "ns3/nstime.h"
+#include "ns3/ndn-shaper-net-device-face.h"
 
 namespace ns3 {
 
@@ -143,12 +144,18 @@ public:
    * @brief Enable Interest shaping (disabled by default)
    *
    * @param enable           Enable or disable shaping
-   * @param maxInterest      Size of the interest queue (in packets)
+   * @param maxInterest      Size of the shaper interest queue (in packets)
    * @param headroom         Headroom in interest shaping to absorb burstiness (0 < headroom < 1)
    * @param updateInterval   Interval to update observed incoming interest rate
+   * @param mode             Determine when to reject/drop an interest (DropTail/PIE/CoDel)
+   * @param delayTarget      Target queueing delay (for PIE or CoDel)
+   * @param maxBurst         Maximum burst allowed before random early drop kicks in (for PIE)
+   * @param delayObserveInterval Interval to observe minimum packet sojourn time (for CoDel)
    */
   void
-  EnableShaper (bool enable = true, uint32_t maxInterest=100, double headroom=0.98, Time updateInterval=Seconds(0.1));
+  EnableShaper (bool enable=true, uint32_t maxInterest=100, double headroom=0.98, Time updateInterval=Seconds(0.1),
+                ShaperNetDeviceFace::QueueMode mode=ShaperNetDeviceFace::QUEUE_MODE_DROPTAIL,
+                Time delayTarget=Seconds(0.02), Time maxBurst=Seconds(0.1), Time delayObserveInterval=Seconds(0.1));
 
   /**
    * \brief Install Ndn stack on the node
@@ -282,6 +289,10 @@ private:
   uint32_t m_maxInterest;
   double   m_headroom;
   Time     m_updateInterval;
+  ShaperNetDeviceFace::QueueMode m_mode;
+  Time     m_delayTarget;
+  Time     m_maxBurst;
+  Time     m_delayObserveInterval;
   bool     m_needSetDefaultRoutes;  
 };
 
