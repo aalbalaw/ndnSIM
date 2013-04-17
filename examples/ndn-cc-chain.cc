@@ -21,6 +21,7 @@
 #include "ns3/ndnSIM-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndn-face-container.h"
+#include "ns3/ndn-shaper-net-device-face.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
@@ -29,21 +30,31 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
+  std::string mode ("DropTail");
   std::string bw_a ("10Mbps"), bw_b ("10Mbps"), lat ("3ms"), qsize ("15");
   std::string isize ("0"), payload_0 ("1000"), payload_3 ("1000"); 
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
-  cmd.AddValue("bw_a", "link bandwidth from 1 to 2", bw_a);
-  cmd.AddValue("bw_b", "link bandwidth from 2 to 1", bw_b);
-  cmd.AddValue("lat", "link latency between 1 and 2", lat);
+  cmd.AddValue("mode", "Shaper queue mode (DropTail/PIE/CoDel)", mode);
+  cmd.AddValue("bw_a", "Link bandwidth from 1 to 2", bw_a);
+  cmd.AddValue("bw_b", "Link bandwidth from 2 to 1", bw_b);
+  cmd.AddValue("lat", "Link latency between 1 and 2", lat);
   cmd.AddValue("qsize", "L2/Shaper queue size", qsize);
   cmd.AddValue("isize", "Randomized interest size, 0 means not to randomize", isize);
   cmd.AddValue("payload_0", "Payload size on 0, 0 means randomized between 600B and 1400B", payload_0);
   cmd.AddValue("payload_3", "Payload size on 3, 0 means randomized between 600B and 1400B", payload_3);
-  cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
-  cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
+  cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
+  cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
+
+  ndn::ShaperNetDeviceFace::QueueMode mode_enum;
+  if (mode == "DropTail")
+    mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_DROPTAIL;
+  else if (mode == "PIE")
+    mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_PIE;
+  else if (mode == "CoDel")
+    mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_CODEL;
 
   uint32_t qsize_int;
   std::istringstream (qsize) >> qsize_int;
@@ -91,7 +102,7 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, qsize_int);
+  ndnHelper.EnableShaper (true, qsize_int, 0.98, Seconds(0.1), mode_enum);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   Ptr<ndn::FaceContainer> faces = ndnHelper.InstallAll ();
   for (ndn::FaceContainer::Iterator i = faces->Begin (); i != faces->End (); ++i)
