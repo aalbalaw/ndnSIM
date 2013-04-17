@@ -31,9 +31,6 @@ main (int argc, char *argv[])
   std::string bw_23 ("10Mbps"), lat_23 ("3ms"), bw_35 ("1Gbps"), lat_35 ("1ms"), qsize ("15");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
-  uint32_t qsize_int;
-  std::istringstream (qsize) >> qsize_int;
-
   CommandLine cmd;
   cmd.AddValue("bw_23", "link bandwidth between 2 and 3", bw_23);
   cmd.AddValue("lat_23", "link latency between 2 and 3", lat_23);
@@ -43,6 +40,9 @@ main (int argc, char *argv[])
   cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
+
+  uint32_t qsize_int;
+  std::istringstream (qsize) >> qsize_int;
 
   // Setup topology
   NodeContainer nodes;
