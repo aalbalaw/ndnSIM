@@ -33,9 +33,6 @@ main (int argc, char *argv[])
   std::string isize ("0"), payload_0 ("1000"), payload_3 ("1000"); 
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
-  uint32_t qsize_int;
-  std::istringstream (qsize) >> qsize_int;
-
   CommandLine cmd;
   cmd.AddValue("bw_a", "link bandwidth from 1 to 2", bw_a);
   cmd.AddValue("bw_b", "link bandwidth from 2 to 1", bw_b);
@@ -47,6 +44,9 @@ main (int argc, char *argv[])
   cmd.AddValue("agg_trace", "aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "app delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
+
+  uint32_t qsize_int;
+  std::istringstream (qsize) >> qsize_int;
 
   // Setup topology
   NodeContainer nodes;
