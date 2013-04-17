@@ -24,6 +24,7 @@
 #include "ns3/packet.h"
 #include "ns3/node.h"
 #include "ns3/pointer.h"
+#include "ns3/random-variable.h"
 
 #include "ns3/point-to-point-net-device.h"
 #include "ns3/channel.h"
@@ -149,6 +150,12 @@ ShaperNetDeviceFace::ShaperNetDeviceFace (Ptr<Node> node, const Ptr<NetDevice> &
   , m_outContentFirst (true)
   , m_inContentFirst (true)
   , m_shaperState (OPEN)
+  , m_old_delay (0.0)
+  , m_drop_prob (0.0)
+  , m_dq_count (-1)
+  , m_avg_dq_rate (0.0)
+  , m_dq_start (0.0)
+  , m_burst_allowance (Seconds(0.1))
   , m_first_above_time (0.0)
   , m_drop_next (0.0)
   , m_drop_count (0)
@@ -171,10 +178,19 @@ ShaperNetDeviceFace& ShaperNetDeviceFace::operator= (const ShaperNetDeviceFace &
 }
 
 void
+ShaperNetDeviceFace::SetInRate (DataRateValue inRate)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  m_inBitRate = inRate.Get().GetBitRate();
+}
+
+void
 ShaperNetDeviceFace::SetMode (ShaperNetDeviceFace::QueueMode mode)
 {
   NS_LOG_FUNCTION (this << mode);
   m_mode = mode;
+  if (m_mode == QUEUE_MODE_PIE)
+    Simulator::Schedule (Seconds(0.03), &ShaperNetDeviceFace::PIEUpdate, this);
 }
 
 ShaperNetDeviceFace::QueueMode
@@ -185,10 +201,43 @@ ShaperNetDeviceFace::GetMode (void)
 }
 
 void
-ShaperNetDeviceFace::SetInRate (DataRateValue inRate)
+ShaperNetDeviceFace::PIEUpdate ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
-  m_inBitRate = inRate.Get().GetBitRate();
+  NS_LOG_FUNCTION (this);
+
+  double qdelay;
+  if (m_avg_dq_rate > 0)
+    qdelay = m_interestQueue.size() / m_avg_dq_rate;
+  else
+    qdelay = 0.0;
+
+  NS_LOG_LOGIC(this << " PIE qdelay: " << qdelay << " old delay: " << m_old_delay);
+
+  double tmp_p = 0.125 * (qdelay - m_delayTarget.GetSeconds()) + 1.25 * (qdelay - m_old_delay);
+  if (m_drop_prob < 0.01)
+      tmp_p /= 8.0;
+  else if (m_drop_prob < 0.1)
+      tmp_p /= 2.0;
+
+  tmp_p += m_drop_prob;
+  if (tmp_p < 0)
+    m_drop_prob = 0.0;
+  else if (tmp_p > 1)
+    m_drop_prob = 1.0;
+  else
+    m_drop_prob = tmp_p;
+
+  NS_LOG_LOGIC(this << " PIE: udpate drop probability to " << m_drop_prob);
+
+  if (qdelay < m_delayTarget.GetSeconds() / 2 && m_old_delay < m_delayTarget.GetSeconds() / 2 and m_drop_prob == 0.0)
+    {
+      m_dq_count = -1;
+      m_avg_dq_rate = 0.0;
+      m_burst_allowance = m_maxBurst;
+    }
+
+  m_old_delay = qdelay;
+  Simulator::Schedule (Seconds(0.03), &ShaperNetDeviceFace::PIEUpdate, this);
 }
 
 bool
@@ -211,11 +260,24 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
 
         if(m_interestQueue.size() < m_maxInterest)
           {
-            if (m_mode == QUEUE_MODE_CODEL)
+            if (m_mode == QUEUE_MODE_PIE)
+              {
+                if (m_burst_allowance <= 0 && !(m_old_delay < m_delayTarget.GetSeconds() / 2 && m_drop_prob < 0.2))
+                  {
+                    NS_LOG_LOGIC(this << " PIE: flip a coin to decide to drop or not " << m_drop_prob);
+                    UniformVariable r (0.0, 1.0);
+                    if (r.GetValue () < m_drop_prob)
+                      {
+                        NS_LOG_LOGIC(this << " PIE drop");
+                        return false;
+                      }
+                  }
+              }
+            else if (m_mode == QUEUE_MODE_CODEL)
               {
                 if (m_dropping && Simulator::Now() >= m_drop_next)
                   {
-                    NS_LOG_LOGIC(this << " codel drop");
+                    NS_LOG_LOGIC(this << " CoDel drop");
                     m_drop_count++;
                     m_drop_next += Seconds(m_delayObserveInterval.GetSeconds() / sqrt(m_drop_count));
                     return false;
@@ -225,7 +287,9 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
                 p->AddPacketTag(tag);
               }
 
+            // Enqueue success
             m_interestQueue.push(p);
+
             if (m_shaperState == OPEN)
               ShaperDequeue();
 
@@ -233,7 +297,7 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
           }
         else
           {
-            NS_LOG_LOGIC(this << " tail drop");
+            NS_LOG_LOGIC(this << " Tail drop");
             return false;
           }
       }
@@ -259,7 +323,7 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
 void
 ShaperNetDeviceFace::ShaperOpen ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
 
   if (m_interestQueue.size() > 0)
     {
@@ -274,7 +338,7 @@ ShaperNetDeviceFace::ShaperOpen ()
           if (m_dropping)
             {
               // leave dropping state if queue is empty
-              NS_LOG_LOGIC(this << " leave dropping state due to empty queue");
+              NS_LOG_LOGIC(this << " CoDel: leave dropping state due to empty queue");
               m_first_above_time = Seconds(0.0);
               m_dropping = false;
             }
@@ -285,23 +349,70 @@ ShaperNetDeviceFace::ShaperOpen ()
 void
 ShaperNetDeviceFace::ShaperDequeue ()
 {
-  NS_LOG_FUNCTION_NOARGS ();
+  NS_LOG_FUNCTION (this);
+  NS_LOG_LOGIC(this << " shaper qlen: " << m_interestQueue.size());
 
   Ptr<Packet> p = m_interestQueue.front ();
   m_interestQueue.pop ();
 
-  if (m_mode == QUEUE_MODE_CODEL)
+  if (m_mode == QUEUE_MODE_PIE)
+    {
+      if (m_dq_count == -1 && m_interestQueue.size() >= 10)
+        {
+          // start a measurement cycle
+          NS_LOG_LOGIC(this << " PIE: start a measurement cycle");
+          m_dq_start = Simulator::Now();
+          m_dq_count = 0;
+        }
+
+      if (m_dq_count != -1)
+        {
+          m_dq_count += 1;
+
+          if (m_dq_count >= 10)
+            {
+              // done with a measurement cycle
+              NS_LOG_LOGIC(this << " PIE: done with a measurement cycle");
+
+              Time tmp = Simulator::Now() - m_dq_start;
+              if (m_avg_dq_rate == 0.0)
+                m_avg_dq_rate = m_dq_count / tmp.GetSeconds();
+              else
+                m_avg_dq_rate = 0.9 * m_avg_dq_rate + 0.1 * m_dq_count / tmp.GetSeconds();
+
+              NS_LOG_LOGIC(this << " PIE: average dequeue rate " << m_avg_dq_rate);
+
+              if (m_interestQueue.size() >= 10)
+                {
+                  // start a measurement cycle
+                  NS_LOG_LOGIC(this << " PIE: start a measurement cycle");
+                  m_dq_start = Simulator::Now();
+                  m_dq_count = 0;
+                }
+              else
+                {
+                  m_dq_count = -1;
+                }
+
+              if (m_burst_allowance > 0)
+                m_burst_allowance -= tmp;
+
+              NS_LOG_LOGIC(this << " PIE: burst allowance " << m_burst_allowance);
+            }
+        }
+    }
+  else if (m_mode == QUEUE_MODE_CODEL)
     {
       TimestampTag tag;
       p->PeekPacketTag (tag);
       Time sojourn_time = Simulator::Now() - tag.GetTimestamp ();
-      NS_LOG_LOGIC(this << " sojourn time: " << sojourn_time);
+      NS_LOG_LOGIC(this << " CoDel sojourn time: " << sojourn_time);
       p->RemovePacketTag (tag);
 
       if (m_dropping && sojourn_time < m_delayTarget)
         {
           // leave dropping state
-          NS_LOG_LOGIC(this << " leave dropping state due to low delay");
+          NS_LOG_LOGIC(this << " CoDel: leave dropping state due to low delay");
           m_first_above_time = Seconds(0.0);
           m_dropping = false;
         }
@@ -309,14 +420,14 @@ ShaperNetDeviceFace::ShaperDequeue ()
         {
           if (m_first_above_time == Seconds(0.0))
             {
-              NS_LOG_LOGIC(this << " first above time " << Simulator::Now());
+              NS_LOG_LOGIC(this << " CoDel: first above time " << Simulator::Now());
               m_first_above_time = Simulator::Now() + m_delayObserveInterval;
             }
           else if (Simulator::Now() >= m_first_above_time
                    && (Simulator::Now() - m_drop_next < m_delayObserveInterval || Simulator::Now() - m_first_above_time >= m_delayObserveInterval))
             {
               // enter dropping state
-              NS_LOG_LOGIC(this << " enter dropping state");
+              NS_LOG_LOGIC(this << " CoDel: enter dropping state");
               m_dropping = true;
 
               if (Simulator::Now() - m_drop_next < m_delayObserveInterval)
