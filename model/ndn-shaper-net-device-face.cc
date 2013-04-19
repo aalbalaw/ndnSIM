@@ -516,7 +516,6 @@ ShaperNetDeviceFace::ReceiveFromNetDevice (Ptr<NetDevice> device,
   switch (type)
     {
     case HeaderHelper::INTEREST_NDNSIM:
-    case HeaderHelper::INTEREST_CCNB:
       {
         if (m_inInterestFirst)
           {
@@ -543,7 +542,6 @@ ShaperNetDeviceFace::ReceiveFromNetDevice (Ptr<NetDevice> device,
 
         break;
       }
-    case HeaderHelper::CONTENT_OBJECT_CCNB:
     case HeaderHelper::CONTENT_OBJECT_NDNSIM:
       {
         if (m_inContentFirst)
@@ -558,6 +556,8 @@ ShaperNetDeviceFace::ReceiveFromNetDevice (Ptr<NetDevice> device,
 
         break;
       }
+    default:
+        break;
     }
 
   Receive (p);
