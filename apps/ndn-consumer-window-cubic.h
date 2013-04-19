@@ -45,6 +45,7 @@ private:
   double m_beta;
   double m_c;
 
+  Time m_last_decrease;
   Time m_epoch_start;
   Time m_dMin;
   uint32_t m_last_window;
