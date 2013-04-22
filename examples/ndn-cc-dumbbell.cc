@@ -30,15 +30,15 @@ int
 main (int argc, char *argv[])
 {
   std::string mode ("DropTail");
-  std::string bw_23 ("10Mbps"), lat_23 ("3ms"), bw_35 ("1Gbps"), lat_35 ("1ms"), qsize ("15");
+  std::string bw_bottle ("10Mbps"), lat_bottle ("3ms"), bw_leg ("1Gbps"), lat_leg ("1ms"), qsize ("15");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("mode", "Shaper queue mode (DropTail/PIE/CoDel)", mode);
-  cmd.AddValue("bw_23", "Link bandwidth between 2 and 3", bw_23);
-  cmd.AddValue("lat_23", "Link latency between 2 and 3", lat_23);
-  cmd.AddValue("bw_35", "Link bandwidth between 3 and 5", bw_35);
-  cmd.AddValue("lat_35", "Link latency between 3 and 5", lat_35);
+  cmd.AddValue("bw_bottle", "Bottleneck link bandwidth", bw_bottle);
+  cmd.AddValue("lat_bottle", "Bottleneck link latency", lat_bottle);
+  cmd.AddValue("bw_leg", "Leg link bandwidth", bw_leg);
+  cmd.AddValue("lat_leg", "Leg link latency", lat_leg);
   cmd.AddValue("qsize", "L2/Shaper queue size", qsize);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
@@ -57,30 +57,34 @@ main (int argc, char *argv[])
 
   // Setup topology
   NodeContainer nodes;
-  nodes.Create (6);
+  nodes.Create (10);
 
   Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue (qsize));
 
   PointToPointHelper p2p;
   p2p.SetDeviceAttribute("DataRate", StringValue ("1Gbps"));
   p2p.SetChannelAttribute("Delay", StringValue ("1ms"));
-  p2p.Install (nodes.Get (0), nodes.Get (2));
-  p2p.Install (nodes.Get (1), nodes.Get (2));
+  p2p.Install (nodes.Get (0), nodes.Get (4));
+  p2p.Install (nodes.Get (1), nodes.Get (4));
+  p2p.Install (nodes.Get (2), nodes.Get (4));
   p2p.Install (nodes.Get (3), nodes.Get (4));
+  p2p.Install (nodes.Get (5), nodes.Get (6));
+  p2p.Install (nodes.Get (5), nodes.Get (7));
+  p2p.Install (nodes.Get (5), nodes.Get (8));
 
-  p2p.SetDeviceAttribute("DataRate", StringValue (bw_23));
-  p2p.SetChannelAttribute("Delay", StringValue (lat_23));
-  p2p.Install (nodes.Get (2), nodes.Get (3));
+  p2p.SetDeviceAttribute("DataRate", StringValue (bw_bottle));
+  p2p.SetChannelAttribute("Delay", StringValue (lat_bottle));
+  p2p.Install (nodes.Get (4), nodes.Get (5));
 
-  p2p.SetDeviceAttribute("DataRate", StringValue (bw_35));
-  p2p.SetChannelAttribute("Delay", StringValue (lat_35));
-  p2p.Install (nodes.Get (3), nodes.Get (5));
+  p2p.SetDeviceAttribute("DataRate", StringValue (bw_leg));
+  p2p.SetChannelAttribute("Delay", StringValue (lat_leg));
+  p2p.Install (nodes.Get (5), nodes.Get (9));
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, qsize_int, 0.98, Seconds(0.1), mode_enum);
+  ndnHelper.EnableShaper (true, qsize_int, 0.97, Seconds(0.1), mode_enum);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 
@@ -89,10 +93,10 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.InstallAll ();
 
   // Getting containers for the consumer/producer
-  Ptr<Node> c1 = nodes.Get (0);
-  Ptr<Node> c2 = nodes.Get (1);
-  Ptr<Node> p1 = nodes.Get (4);
-  Ptr<Node> p2 = nodes.Get (5);
+  Ptr<Node> c1 = nodes.Get (2);
+  Ptr<Node> c2 = nodes.Get (3);
+  Ptr<Node> p1 = nodes.Get (8);
+  Ptr<Node> p2 = nodes.Get (9);
 
   // Install consumer
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowCUBIC");
@@ -117,6 +121,41 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.AddOrigins ("/p2", p2);
   producerHelper.SetPrefix ("/p2");
   producerHelper.Install (p2);
+
+  // CBR as background traffic
+  ndn::AppHelper consumerCbrHelper ("ns3::ndn::ConsumerCbr");
+  consumerCbrHelper.SetAttribute ("Randomize", StringValue("exponential"));
+  consumerCbrHelper.SetAttribute ("RandComponentLenMax", StringValue("16"));
+  producerHelper.SetAttribute ("RandomPayloadSizeMin", StringValue("500"));
+  producerHelper.SetAttribute ("RandomPayloadSizeMax", StringValue("1000"));
+
+  consumerCbrHelper.SetPrefix ("/cbr1");
+  consumerCbrHelper.SetAttribute ("Frequency", StringValue("3"));
+  consumerCbrHelper.Install (nodes.Get (0));
+  consumerCbrHelper.SetPrefix ("/cbr2");
+  consumerCbrHelper.SetAttribute ("Frequency", StringValue("7"));
+  consumerCbrHelper.Install (nodes.Get (1));
+
+  ndnGlobalRoutingHelper.AddOrigins ("/cbr1", nodes.Get (6));
+  producerHelper.SetPrefix ("/cbr1");
+  producerHelper.Install (nodes.Get (6));
+  ndnGlobalRoutingHelper.AddOrigins ("/cbr2", nodes.Get (7));
+  producerHelper.SetPrefix ("/cbr2");
+  producerHelper.Install (nodes.Get (7));
+
+  consumerCbrHelper.SetPrefix ("/cbr3");
+  consumerCbrHelper.SetAttribute ("Frequency", StringValue("100"));
+  consumerCbrHelper.Install (nodes.Get (6));
+  consumerCbrHelper.SetPrefix ("/cbr4");
+  consumerCbrHelper.SetAttribute ("Frequency", StringValue("200"));
+  consumerCbrHelper.Install (nodes.Get (7));
+
+  ndnGlobalRoutingHelper.AddOrigins ("/cbr3", nodes.Get (1));
+  producerHelper.SetPrefix ("/cbr3");
+  producerHelper.Install (nodes.Get (1));
+  ndnGlobalRoutingHelper.AddOrigins ("/cbr4", nodes.Get (0));
+  producerHelper.SetPrefix ("/cbr4");
+  producerHelper.Install (nodes.Get (0));
 
   // Calculate and install FIBs
   ndnGlobalRoutingHelper.CalculateRoutes ();

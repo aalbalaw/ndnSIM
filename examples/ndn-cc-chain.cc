@@ -102,7 +102,7 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
                                    "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, qsize_int, 0.98, Seconds(0.1), mode_enum);
+  ndnHelper.EnableShaper (true, qsize_int, 0.97, Seconds(0.1), mode_enum);
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   Ptr<ndn::FaceContainer> faces = ndnHelper.InstallAll ();
   for (ndn::FaceContainer::Iterator i = faces->Begin (); i != faces->End (); ++i)
