@@ -89,7 +89,7 @@ public:
    */
   virtual void
   WillSendOutInterest (uint32_t sequenceNumber);
-  
+
 protected:
   // from App
   virtual void

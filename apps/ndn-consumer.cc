@@ -349,6 +349,5 @@ Consumer::WillSendOutInterest (uint32_t sequenceNumber)
   m_rtt->SentSeq (SequenceNumber32 (sequenceNumber), 1);
 }
 
-
 } // namespace ndn
 } // namespace ns3

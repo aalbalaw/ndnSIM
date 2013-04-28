@@ -123,6 +123,13 @@ ConsumerWindow::ScheduleNextPacket ()
     }
 }
 
+void
+ConsumerWindow::WillSendOutInterest (uint32_t sequenceNumber)
+{
+  m_inFlight ++;
+  Consumer::WillSendOutInterest (sequenceNumber);
+}
+
 ///////////////////////////////////////////////////
 //          Process incoming packets             //
 ///////////////////////////////////////////////////
