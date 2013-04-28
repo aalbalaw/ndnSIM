@@ -83,9 +83,9 @@ ConsumerWindowCUBIC::AdjustWindowOnContentObject (const Ptr<const ContentObjectH
     {
       Time rtt = Simulator::Now () - entry->time;
       if (m_dMin == Seconds(0.0))
-        m_dMin = m_dMin<rtt ? m_dMin : rtt;
-      else
         m_dMin = rtt;
+      else
+        m_dMin = m_dMin<rtt ? m_dMin : rtt;
     }
 
   if (m_window < m_ssthresh)
