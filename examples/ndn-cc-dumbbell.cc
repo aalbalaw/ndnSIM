@@ -29,12 +29,13 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string mode ("DropTail");
+  std::string consumer ("CUBIC"), shaper ("DropTail");
   std::string bw_bottle ("10Mbps"), lat_bottle ("3ms"), bw_leg ("1Gbps"), lat_leg ("1ms"), qsize ("15");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
-  cmd.AddValue("mode", "Shaper queue mode (DropTail/PIE/CoDel)", mode);
+  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM)", consumer);
+  cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("bw_bottle", "Bottleneck link bandwidth", bw_bottle);
   cmd.AddValue("lat_bottle", "Bottleneck link latency", lat_bottle);
   cmd.AddValue("bw_leg", "Leg link bandwidth", bw_leg);
@@ -45,12 +46,14 @@ main (int argc, char *argv[])
   cmd.Parse (argc, argv);
 
   ndn::ShaperNetDeviceFace::QueueMode mode_enum;
-  if (mode == "DropTail")
+  if (shaper == "DropTail")
     mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_DROPTAIL;
-  else if (mode == "PIE")
+  else if (shaper == "PIE")
     mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_PIE;
-  else if (mode == "CoDel")
+  else if (shaper == "CoDel")
     mode_enum = ndn::ShaperNetDeviceFace::QUEUE_MODE_CODEL;
+  else if (shaper != "None")
+    return -1;
 
   uint32_t qsize_int;
   std::istringstream (qsize) >> qsize_int;
@@ -82,9 +85,15 @@ main (int argc, char *argv[])
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
-  ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute",
-                                   "EnableNACKs", "true");
-  ndnHelper.EnableShaper (true, qsize_int, 0.97, Seconds(0.1), mode_enum);
+  if (shaper != "None")
+    {
+      ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
+      ndnHelper.EnableShaper (true, qsize_int, 0.97, Seconds(0.1), mode_enum);
+    }
+  else
+    {
+      ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute"); // No hop-by-hop interest shaping, no NACKs.
+    }
   ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
   ndnHelper.InstallAll ();
 
@@ -99,16 +108,26 @@ main (int argc, char *argv[])
   Ptr<Node> p2 = nodes.Get (9);
 
   // Install consumer
-  ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerWindowCUBIC");
+  ndn::AppHelper *consumerHelper;
+  if (consumer == "CUBIC")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowCUBIC");
+  else if (consumer == "Rate")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRate");
+  else if (consumer == "RAAQM")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRAAQM");
+  else
+    return -1;
 
-  consumerHelper.SetPrefix ("/p1");
+  consumerHelper->SetPrefix ("/p1");
   UniformVariable r (0.0, 5.0);
-  consumerHelper.SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper.Install (c1);
+  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+  consumerHelper->Install (c1);
 
-  consumerHelper.SetPrefix ("/p2");
-  consumerHelper.SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper.Install (c2);
+  consumerHelper->SetPrefix ("/p2");
+  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+  consumerHelper->Install (c2);
+
+  delete consumerHelper;
   
   // Register prefix with global routing controller and install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
