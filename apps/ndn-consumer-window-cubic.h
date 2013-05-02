@@ -44,6 +44,7 @@ private:
 
   double m_beta;
   double m_c;
+  bool m_fast_convergence;
 
   Time m_last_decrease;
   Time m_epoch_start;
