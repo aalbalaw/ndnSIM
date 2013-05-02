@@ -46,6 +46,10 @@ ConsumerWindowCUBIC::GetTypeId (void)
                  DoubleValue (0.4),
                  MakeDoubleAccessor (&ConsumerWindowCUBIC::m_c),
                  MakeDoubleChecker<double> ())
+    .AddAttribute ("FastConvergence", "turn on/off fast convergence",
+                 BooleanValue (true),
+                 MakeBooleanAccessor (&ConsumerWindowCUBIC::m_fast_convergence),
+                 MakeBooleanChecker ())
 
     .AddTraceSource ("SsthreshTrace",
                      "Ssthresh that determines whether we are in slow start or congestion avoidance phase",
@@ -133,9 +137,13 @@ ConsumerWindowCUBIC::AdjustWindowOnNack (const Ptr<const InterestHeader> &intere
   SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (seq);
   if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
     {
-      m_last_decrease = Simulator::Now();
-      m_last_window = m_window;
       m_epoch_start = Seconds(0.0);
+      m_last_decrease = Simulator::Now();
+
+      if (m_window < m_last_window && m_fast_convergence)
+        m_last_window = m_window * (2.0 - m_beta) / 2.0;
+      else
+        m_last_window = m_window;
 
       m_window = m_window * (1.0 - m_beta);
       m_ssthresh = m_window;
