@@ -10,12 +10,18 @@ def build(bld):
     obj = bld.create_ns3_program('ndn-grid', all_modules)
     obj.source = 'ndn-grid.cc'
 
-    obj = bld.create_ns3_program('ndn-cc-chain', ['ndnSIM'])
+    obj = bld.create_ns3_program('ndn-cc-chain', all_modules)
     obj.source = 'ndn-cc-chain.cc'
 
-    obj = bld.create_ns3_program('ndn-cc-dumbbell', ['ndnSIM'])
+    obj = bld.create_ns3_program('ndn-cc-dumbbell', all_modules)
     obj.source = 'ndn-cc-dumbbell.cc'
 
+    obj = bld.create_ns3_program('ndn-cc-dumbbell-special', all_modules)
+    obj.source = 'ndn-cc-dumbbell-special.cc'
+
+    obj = bld.create_ns3_program('ndn-grid', ['ndnSIM', 'point-to-point-layout'])
+    obj.source = 'ndn-grid.cc'
+    
     obj = bld.create_ns3_program('ndn-zipf-mandelbrot', all_modules)
     obj.source = 'ndn-zipf-mandelbrot.cc'
 
