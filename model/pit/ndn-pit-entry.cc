@@ -46,7 +46,7 @@ Entry::Entry (Pit &container,
   , m_fibEntry (fibEntry)
   , m_expireTime (Simulator::Now () + (!header->GetInterestLifetime ().IsZero ()?
                                        header->GetInterestLifetime ():
-                                       Seconds (2.0)))
+                                       Seconds (5.0)))
   , m_maxRetxCount (0)
 {
   NS_LOG_FUNCTION (GetPrefix () << m_expireTime);
