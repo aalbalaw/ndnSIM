@@ -36,7 +36,7 @@ main (int argc, char *argv[])
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
-  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM)", consumer);
+  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("bw_a", "Link bandwidth from 1 to 2", bw_a);
   cmd.AddValue("bw_b", "Link bandwidth from 2 to 1", bw_b);
@@ -141,6 +141,8 @@ main (int argc, char *argv[])
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRate");
   else if (consumer == "RAAQM")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRAAQM");
+  else if (consumer == "AIMD")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
   else
     return -1;
 

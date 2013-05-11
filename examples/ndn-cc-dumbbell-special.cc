@@ -33,7 +33,7 @@ main (int argc, char *argv[])
   std::string bw_bottle ("10Mbps"), lat_bottle ("3ms"), qsize ("15");
 
   CommandLine cmd;
-  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM)", consumer);
+  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("bw_bottle", "Bottleneck link bandwidth", bw_bottle);
   cmd.AddValue("lat_bottle", "Bottleneck link latency", lat_bottle);
@@ -109,6 +109,8 @@ main (int argc, char *argv[])
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRate");
   else if (consumer == "RAAQM")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRAAQM");
+  else if (consumer == "AIMD")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
   else
     return -1;
 
