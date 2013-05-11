@@ -34,15 +34,21 @@ ConsumerWindowAIMD::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::ndn::ConsumerWindowAIMD")
     .SetGroupName ("Ndn")
-    .SetParent<ConsumerWindowRelentless> ()
+    .SetParent<ConsumerWindow> ()
     .AddConstructor<ConsumerWindowAIMD> ()
+
+    .AddTraceSource ("SsthreshTrace",
+                     "Ssthresh that determines whether we are in slow start or congestion avoidance phase",
+                     MakeTraceSourceAccessor (&ConsumerWindowAIMD::m_ssthresh))
     ;
 
   return tid;
 }
 
 ConsumerWindowAIMD::ConsumerWindowAIMD ()
-  : ConsumerWindowRelentless ()
+  : ConsumerWindow ()
+  , m_ssthresh (std::numeric_limits<uint32_t>::max ())
+  , m_window_cnt (0)
   , m_recover (0)
 {
 }
@@ -52,12 +58,54 @@ ConsumerWindowAIMD::~ConsumerWindowAIMD ()
 }
 
 void
+ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+                                                       Ptr<Packet> payload)
+{
+  if (m_window < m_ssthresh)
+    {
+      // in slow start phase
+      m_window++;
+    }
+  else
+    {
+      // in congestion avoidance phase
+      if (m_window_cnt >= m_window)
+        {
+          m_window++;
+          m_window_cnt = 0;
+        }
+      else
+        {
+          m_window_cnt++;
+        }
+    }
+
+  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
+}
+
+void
 ConsumerWindowAIMD::AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload)
 {
   // multiplicative decrease
   // but do it just once for every window of interests
   uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
   if (seq > m_recover)
+    {
+      m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
+      m_window = m_ssthresh;
+      m_window_cnt = 0;
+      m_recover = m_seq;
+    }
+
+  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
+}
+
+void
+ConsumerWindowAIMD::AdjustWindowOnTimeout (uint32_t sequenceNumber)
+{
+  // multiplicative decrease
+  // but do it just once for every window of interests
+  if (sequenceNumber > m_recover)
     {
       m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
       m_window = m_ssthresh;

@@ -19,13 +19,13 @@
 #ifndef NDN_CONSUMER_WINDOW_AIMD_H
 #define NDN_CONSUMER_WINDOW_AIMD_H
 
-#include "ndn-consumer-window-relentless.h"
+#include "ndn-consumer-window.h"
 #include "ns3/traced-value.h"
 
 namespace ns3 {
 namespace ndn {
 
-class ConsumerWindowAIMD: public ConsumerWindowRelentless
+class ConsumerWindowAIMD: public ConsumerWindow
 {
 public:
   static TypeId GetTypeId ();
@@ -35,8 +35,12 @@ public:
 
 protected:
   virtual void AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload);
+  virtual void AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+                                            Ptr<Packet> payload);
+  virtual void AdjustWindowOnTimeout (uint32_t sequenceNumber);
 
-private:
+  TracedValue<uint32_t> m_ssthresh;
+  uint32_t m_window_cnt;
   uint32_t m_recover;
 };
 
