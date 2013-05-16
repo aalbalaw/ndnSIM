@@ -312,6 +312,7 @@ private:
   bool     m_needSetDefaultRoutes;
 
   std::list< std::pair<TypeId, NetDeviceFaceCreateCallback> > m_netDeviceCallbacks;
+
   bool     m_shaperEnabled;
   uint32_t m_maxInterest;
   double   m_headroom;
@@ -320,7 +321,6 @@ private:
   Time     m_delayTarget;
   Time     m_maxBurst;
   Time     m_delayObserveInterval;
-  bool     m_needSetDefaultRoutes;  
 };
 
 } // namespace ndn

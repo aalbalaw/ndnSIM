@@ -66,8 +66,8 @@ namespace ndn {
 
 StackHelper::StackHelper ()
   : m_limitsEnabled (false)
-  , m_shaperEnabled (false)
   , m_needSetDefaultRoutes (false)
+  , m_shaperEnabled (false)
 {
   m_ndnFactory.         SetTypeId ("ns3::ndn::L3Protocol");
   m_strategyFactory.    SetTypeId ("ns3::ndn::fw::Flooding");

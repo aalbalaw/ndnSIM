@@ -47,6 +47,7 @@ ConsumerWindow::GetTypeId (void)
                    StringValue ("1"),
                    MakeUintegerAccessor (&ConsumerWindow::GetWindow, &ConsumerWindow::SetWindow),
                    MakeUintegerChecker<uint32_t> ())
+
     .AddAttribute ("PayloadSize", "Average size of content object size (to calculate interest generation rate)",
                    UintegerValue (1040),
                    MakeUintegerAccessor (&ConsumerWindow::GetPayloadSize, &ConsumerWindow::SetPayloadSize),
@@ -95,6 +96,42 @@ uint32_t
 ConsumerWindow::GetWindow () const
 {
   return m_initialWindow;
+}
+
+uint32_t
+ConsumerWindow::GetPayloadSize () const
+{
+  return m_payloadSize;
+}
+
+void
+ConsumerWindow::SetPayloadSize (uint32_t payload)
+{
+  m_payloadSize = payload;
+}
+
+double
+ConsumerWindow::GetMaxSize () const
+{
+  if (m_seqMax == 0)
+    return -1.0;
+
+  return m_maxSize;
+}
+
+void
+ConsumerWindow::SetMaxSize (double size)
+{
+  m_maxSize = size;
+  if (m_maxSize < 0)
+    {
+      m_seqMax = 0;
+      return;
+    }
+
+  m_seqMax = floor(1.0 + m_maxSize * 1024.0 * 1024.0 / m_payloadSize);
+  NS_LOG_DEBUG ("MaxSeqNo: " << m_seqMax);
+  // std::cout << "MaxSeqNo: " << m_seqMax << "\n";
 }
 
 void
@@ -188,13 +225,6 @@ void
 ConsumerWindow::AdjustWindowOnTimeout (uint32_t sequenceNumber)
 {
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
-}
-
-void
-ConsumerWindow::WillSendOutInterest (uint32_t sequenceNumber)
-{
-  m_inFlight ++;
-  Consumer::WillSendOutInterest (sequenceNumber);
 }
 
 
