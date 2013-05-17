@@ -30,8 +30,8 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("DropTail");
-  std::string bw_a ("10Mbps"), bw_b ("10Mbps"), lat ("3ms"), qsize ("15");
+  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string bw_a ("10Mbps"), bw_b ("10Mbps"), lat ("13ms"), qsize ("38");
   std::string isize ("0"), payload_0 ("1000"), payload_3 ("1000"); 
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 

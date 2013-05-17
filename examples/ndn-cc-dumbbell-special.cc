@@ -29,8 +29,8 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("DropTail");
-  std::string bw_bottle ("10Mbps"), lat_bottle ("3ms"), qsize ("15");
+  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string bw_bottle ("10Mbps"), lat_bottle ("13ms"), qsize ("38");
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);

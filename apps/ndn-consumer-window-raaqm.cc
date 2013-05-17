@@ -78,7 +78,7 @@ ConsumerWindowRAAQM::~ConsumerWindowRAAQM ()
 }
 
 void
-ConsumerWindowRAAQM::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+ConsumerWindowRAAQM::AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                                        Ptr<Packet> payload)
 {
   if (m_window < m_ssthresh)

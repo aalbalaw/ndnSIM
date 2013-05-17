@@ -270,21 +270,6 @@ StackHelper::Install (Ptr<Node> node) const
       //   continue; // don't create face for a LoopbackNetDevice
 
       Ptr<NetDeviceFace> face;
-      if (m_shaperEnabled)
-        {
-          face = CreateObject<ShaperNetDeviceFace> (node, device);
-          face->SetAttribute("MaxInterest", UintegerValue (m_maxInterest));
-          face->SetAttribute("Headroom", DoubleValue (m_headroom));
-          face->SetAttribute("UpdateInterval", TimeValue (m_updateInterval));
-          face->SetAttribute("QueueMode", EnumValue (m_mode));
-          face->SetAttribute("DelayTarget", TimeValue (m_delayTarget));
-          face->SetAttribute("MaxBurst", TimeValue (m_maxBurst));
-          face->SetAttribute("DelayObserveInterval", TimeValue (m_delayObserveInterval));
-        }
-      else
-        {
-          face = CreateObject<NetDeviceFace> (node, device);
-        }
 
       for (std::list< std::pair<TypeId, NetDeviceFaceCreateCallback> >::const_iterator item = m_netDeviceCallbacks.begin ();
            item != m_netDeviceCallbacks.end ();
@@ -341,7 +326,23 @@ StackHelper::PointToPointNetDeviceCallback (Ptr<Node> node, Ptr<L3Protocol> ndn,
 {
   NS_LOG_DEBUG ("Creating point-to-point NetDeviceFace on node " << node->GetId ());
 
-  Ptr<NetDeviceFace> face = CreateObject<NetDeviceFace> (node, device);
+  Ptr<NetDeviceFace> face;
+
+  if (m_shaperEnabled)
+    {
+      face = CreateObject<ShaperNetDeviceFace> (node, device);
+      face->SetAttribute("MaxInterest", UintegerValue (m_maxInterest));
+      face->SetAttribute("Headroom", DoubleValue (m_headroom));
+      face->SetAttribute("UpdateInterval", TimeValue (m_updateInterval));
+      face->SetAttribute("QueueMode", EnumValue (m_mode));
+      face->SetAttribute("DelayTarget", TimeValue (m_delayTarget));
+      face->SetAttribute("MaxBurst", TimeValue (m_maxBurst));
+      face->SetAttribute("DelayObserveInterval", TimeValue (m_delayObserveInterval));
+    }
+  else
+    {
+      face = CreateObject<NetDeviceFace> (node, device);
+    }
 
   ndn->AddFace (face);
   NS_LOG_LOGIC ("Node " << node->GetId () << ": added NetDeviceFace as face #" << *face);

@@ -94,7 +94,7 @@ ConsumerRate::ScheduleNextPacket ()
 }
 
 void
-ConsumerRate::OnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+ConsumerRate::OnContentObject (const Ptr<const ContentObject> &contentObject,
                                Ptr< Packet> payload)
 {
   if (m_prevData != Seconds (0.0))

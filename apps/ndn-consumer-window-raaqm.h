@@ -35,7 +35,7 @@ public:
   virtual ~ConsumerWindowRAAQM ();
 
 protected:
-  virtual void AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+  virtual void AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                             Ptr<Packet> payload);
 
 private:

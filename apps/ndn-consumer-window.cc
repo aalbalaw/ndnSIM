@@ -209,13 +209,13 @@ ConsumerWindow::OnTimeout (uint32_t sequenceNumber)
 }
 
 void
-ConsumerWindow::AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload)
+ConsumerWindow::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);
 }
 
 void
-ConsumerWindow::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+ConsumerWindow::AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                              Ptr<Packet> payload)
 {
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight);

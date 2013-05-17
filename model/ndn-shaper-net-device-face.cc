@@ -28,7 +28,7 @@
 
 #include "ns3/point-to-point-net-device.h"
 #include "ns3/channel.h"
-#include "ns3/ndn-name-components.h"
+#include "ns3/ndn-name.h"
 #include "ns3/ndn-header-helper.h"
 #include "ns3/ndn-interest.h"
 #include "ns3/simulator.h"
@@ -251,7 +251,7 @@ ShaperNetDeviceFace::SendImpl (Ptr<Packet> p)
     case HeaderHelper::INTEREST_NDNSIM:
       {
         Ptr<Packet> packet = p->Copy ();
-        Ptr<InterestHeader> header = Create<InterestHeader> ();
+        Ptr<Interest> header = Create<Interest> ();
         packet->RemoveHeader (*header);
         if (header->GetNack () > 0)
           return NetDeviceFace::SendImpl (p); // no shaping for NACK packets

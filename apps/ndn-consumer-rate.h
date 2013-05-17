@@ -46,7 +46,7 @@ protected:
   ScheduleNextPacket ();
 
   virtual void
-  OnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+  OnContentObject (const Ptr<const ContentObject> &contentObject,
                    Ptr<Packet> payload);
 
   double m_frequency; // interest packet sending frequency (in hertz)

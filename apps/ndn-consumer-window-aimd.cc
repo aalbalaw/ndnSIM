@@ -58,7 +58,7 @@ ConsumerWindowAIMD::~ConsumerWindowAIMD ()
 }
 
 void
-ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                                        Ptr<Packet> payload)
 {
   if (m_window < m_ssthresh)
@@ -84,7 +84,7 @@ ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObjectHe
 }
 
 void
-ConsumerWindowAIMD::AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload)
+ConsumerWindowAIMD::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
   // multiplicative decrease
   // but do it just once for every window of interests

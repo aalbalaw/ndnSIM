@@ -34,8 +34,8 @@ public:
   virtual ~ConsumerWindowAIMD ();
 
 protected:
-  virtual void AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload);
-  virtual void AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+  virtual void AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload);
+  virtual void AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                             Ptr<Packet> payload);
   virtual void AdjustWindowOnTimeout (uint32_t sequenceNumber);
 

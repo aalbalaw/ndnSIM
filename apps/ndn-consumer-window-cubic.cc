@@ -77,7 +77,7 @@ ConsumerWindowCUBIC::~ConsumerWindowCUBIC ()
 }
 
 void
-ConsumerWindowCUBIC::AdjustWindowOnContentObject (const Ptr<const ContentObjectHeader> &contentObject,
+ConsumerWindowCUBIC::AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                                        Ptr<Packet> payload)
 {
   // record minimum RTT in m_dMin
@@ -131,10 +131,31 @@ ConsumerWindowCUBIC::AdjustWindowOnContentObject (const Ptr<const ContentObjectH
 }
 
 void
-ConsumerWindowCUBIC::AdjustWindowOnNack (const Ptr<const InterestHeader> &interest, Ptr<Packet> payload)
+ConsumerWindowCUBIC::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
   uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
   SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (seq);
+  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
+    {
+      m_epoch_start = Seconds(0.0);
+      m_last_decrease = Simulator::Now();
+
+      if (m_window < m_last_window && m_fast_convergence)
+        m_last_window = m_window * (2.0 - m_beta) / 2.0;
+      else
+        m_last_window = m_window;
+
+      m_window = m_window * (1.0 - m_beta);
+      m_ssthresh = m_window;
+    }
+
+  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
+}
+
+void
+ConsumerWindowCUBIC::AdjustWindowOnTimeout (uint32_t sequenceNumber)
+{
+  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (sequenceNumber);
   if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
     {
       m_epoch_start = Seconds(0.0);
