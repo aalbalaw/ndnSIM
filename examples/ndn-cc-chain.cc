@@ -146,6 +146,8 @@ main (int argc, char *argv[])
   else
     return -1;
 
+  consumerHelper->SetAttribute ("LifeTime", TimeValue (Seconds (5.0)));
+
   if (isize != "0")
     consumerHelper->SetAttribute (std::string("RandComponentLenMax"), StringValue(isize));
 

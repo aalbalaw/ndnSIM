@@ -120,6 +120,8 @@ main (int argc, char *argv[])
   else
     return -1;
 
+  consumerHelper->SetAttribute ("LifeTime", TimeValue (Seconds (5.0)));
+
   consumerHelper->SetPrefix ("/p1");
   UniformVariable r (0.0, 5.0);
   consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));

@@ -114,6 +114,8 @@ main (int argc, char *argv[])
   else
     return -1;
 
+  consumerHelper->SetAttribute ("LifeTime", TimeValue (Seconds (5.0)));
+
   consumerHelper->SetPrefix ("/p1");
   consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
   consumerHelper->SetAttribute ("StopTime", TimeValue (Seconds (60.0)));
