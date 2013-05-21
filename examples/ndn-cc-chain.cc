@@ -30,12 +30,13 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string twoway ("0"), consumer ("CUBIC"), shaper ("PIE");
   std::string bw_a ("10Mbps"), bw_b ("10Mbps"), lat ("13ms"), qsize ("38");
   std::string isize ("0"), payload_0 ("1000"), payload_3 ("1000"); 
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
+  cmd.AddValue("twoway", "0 - one-way traffic, 1 - two-way traffic", twoway);
   cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("bw_a", "Link bandwidth from 1 to 2", bw_a);
@@ -156,9 +157,12 @@ main (int argc, char *argv[])
   consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
   consumerHelper->Install (cp1);
 
-  consumerHelper->SetPrefix ("/cp1");
-  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper->Install (cp2);
+  if (twoway == "1")
+    {
+      consumerHelper->SetPrefix ("/cp1");
+      consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+      consumerHelper->Install (cp2);
+    }
 
   delete consumerHelper;
 
