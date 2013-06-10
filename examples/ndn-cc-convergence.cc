@@ -21,8 +21,6 @@
 #include "ns3/ndnSIM-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndn-shaper-net-device-face.h"
-#include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
-#include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
 
 using namespace ns3;
 
@@ -176,12 +174,6 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.CalculateRoutes ();
 
   Simulator::Stop (Seconds (70.1));
-
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
-    aggTracers = ndn::L3AggregateTracer::InstallAll ("aggregate-trace.txt", Seconds (10.0));
-
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-    tracers = ndn::AppDelayTracer::InstallAll ("app-delays-trace.txt");
 
   Simulator::Run ();
   Simulator::Destroy ();

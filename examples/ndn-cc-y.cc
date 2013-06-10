@@ -24,6 +24,7 @@
 #include "ns3/ndn-consumer.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
+#include <ns3/ndnSIM/utils/tracers/ndn-cs-tracer.h>
 
 using namespace ns3;
 
@@ -32,7 +33,7 @@ main (int argc, char *argv[])
 {
   std::string consumer ("CUBIC"), shaper ("PIE");
   std::string num_content ("10000"), q ("0.0"), s ("0.75"), cache_size ("100");
-  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
+  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);
@@ -43,6 +44,7 @@ main (int argc, char *argv[])
   cmd.AddValue("cache_size", "Cache size at the intermediate router", cache_size);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
+  cmd.AddValue("cs_trace", "Content store trace file name", cs_trace);
   cmd.Parse (argc, argv);
 
   ndn::ShaperNetDeviceFace::QueueMode mode_enum;
@@ -148,7 +150,10 @@ main (int argc, char *argv[])
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-    tracers = ndn::AppDelayTracer::InstallAll (delay_trace);
+    delayTracers = ndn::AppDelayTracer::InstallAll (delay_trace);
+
+  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::CsTracer> > >
+    csTracers = ndn::CsTracer::InstallAll (cs_trace, Seconds (10.0));
 
   Simulator::Run ();
   Simulator::Destroy ();

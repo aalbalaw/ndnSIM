@@ -189,7 +189,7 @@ main (int argc, char *argv[])
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-    tracers = ndn::AppDelayTracer::InstallAll (delay_trace);
+    delayTracers = ndn::AppDelayTracer::InstallAll (delay_trace);
 
   Simulator::Run ();
   Simulator::Destroy ();
