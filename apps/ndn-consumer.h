@@ -90,6 +90,12 @@ public:
   virtual void
   WillSendOutInterest (uint32_t sequenceNumber);
 
+  enum RequestMode
+  {
+    SEQUENTIAL,
+    ZIPF_MANDELBROT
+  };
+
 protected:
   // from App
   virtual void
@@ -129,6 +135,38 @@ protected:
 
   uint32_t        m_seq;  ///< @brief currently requested sequence number
   uint32_t        m_seqMax;    ///< @brief maximum number of sequence number
+
+  RequestMode     m_requestMode;
+
+  void SetRequestMode (RequestMode mode);
+  RequestMode GetRequestMode (void);
+
+  uint32_t        m_N;  ///< @brief total number of contents, Zipf-Mandelbrot only
+  double          m_q;  ///< @brief q in (k+q)^s, Zipf-Mandelbrot only
+  double          m_s;  ///< @brief s in (k+q)^s, Zipf-Mandelbrot only
+  std::vector<double> m_Pcum;  ///< @brief cumulative probability, Zipf-Mandelbrot only
+
+  void
+  SetNumberOfContents (uint32_t numOfContents);
+
+  uint32_t
+  GetNumberOfContents () const;
+
+  void
+  SetQ (double q);
+
+  double
+  GetQ () const;
+
+  void
+  SetS (double s);
+
+  double
+  GetS () const;
+
+  uint32_t
+  GetNextSeq();
+
   EventId         m_sendEvent; ///< @brief EventId of pending "send packet" event
   Time            m_retxTimer; ///< @brief Currently estimated retransmission timer
   EventId         m_retxEvent; ///< @brief Event to check whether or not retransmission should be performed
@@ -136,7 +174,7 @@ protected:
   Ptr<RttEstimator> m_rtt; ///< @brief RTT estimator
 
   Time               m_offTime;             ///< \brief Time interval between packets
-  Name     m_interestName;        ///< \brief NDN Name of the Interest (use Name)
+  Name               m_interestName;        ///< \brief NDN Name of the Interest (use Name)
   Time               m_interestLifeTime;    ///< \brief LifeTime for interest packet
 
   uint32_t        m_randCompLenMax;   ///< @brief maximum length of randomly added component

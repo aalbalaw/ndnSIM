@@ -82,6 +82,28 @@ Consumer::GetTypeId (void)
                    MakeTimeAccessor (&Consumer::GetRetxTimer, &Consumer::SetRetxTimer),
                    MakeTimeChecker ())
 
+    .AddAttribute ("RequestMode",
+                   "Determine in what sequence the consumer issues interests",
+                   EnumValue (SEQUENTIAL),
+                   MakeEnumAccessor (&Consumer::SetRequestMode),
+                   MakeEnumChecker (SEQUENTIAL, "SEQUENTIAL",
+                                    ZIPF_MANDELBROT, "ZIPF_MANDELBROT"))
+
+    .AddAttribute ("NumberOfContents", "Total number of contents (Zipf-Mandelbrot only)",
+                   StringValue ("1000"),
+                   MakeUintegerAccessor (&Consumer::SetNumberOfContents, &Consumer::GetNumberOfContents),
+                   MakeUintegerChecker<uint32_t> ())
+
+    .AddAttribute ("Q", "Parameter of improve rank (Zipf-Mandelbrot only)",
+                   StringValue ("0.0"),
+                   MakeDoubleAccessor (&Consumer::SetQ, &Consumer::GetQ),
+                   MakeDoubleChecker<double> ())
+
+    .AddAttribute ("S", "Parameter of power (Zipf-Mandelbrot only)",
+                   StringValue ("0.75"),
+                   MakeDoubleAccessor (&Consumer::SetS, &Consumer::GetS),
+                   MakeDoubleChecker<double> ())
+
     .AddTraceSource ("LastRetransmittedInterestDataDelay", "Delay between last retransmitted Interest and received Data",
                      MakeTraceSourceAccessor (&Consumer::m_lastRetransmittedInterestDataDelay))
 
@@ -96,12 +118,83 @@ Consumer::Consumer ()
   : m_rand (0, std::numeric_limits<uint32_t>::max ())
   , m_seq (0)
   , m_seqMax (0) // don't request anything
+  , m_N (1000) // needed here to make sure when SetQ/SetS are called, there is a valid value of N
+  , m_q (0.0)
+  , m_s (0.75)
   , m_randCompLenMax (0) // no random components to be added
   , m_randCompName () // No random components
 {
   NS_LOG_FUNCTION_NOARGS ();
 
   m_rtt = CreateObject<RttMeanDeviation> ();
+}
+
+void
+Consumer::SetRequestMode (Consumer::RequestMode mode)
+{
+  NS_LOG_FUNCTION (this << mode);
+  m_requestMode = mode;
+}
+
+Consumer::RequestMode
+Consumer::GetRequestMode (void)
+{
+  NS_LOG_FUNCTION (this);
+  return m_requestMode;
+}
+
+void
+Consumer::SetNumberOfContents (uint32_t numOfContents)
+{
+  m_N = numOfContents;
+
+  NS_LOG_DEBUG (m_q << " and " << m_s << " and " << m_N);
+
+  m_Pcum = std::vector<double> (m_N + 1);
+
+  m_Pcum[0] = 0.0;
+  for (uint32_t i=1; i<=m_N; i++)
+    {
+      m_Pcum[i] = m_Pcum[i-1] + 1.0 / std::pow(i+m_q, m_s);
+    }
+
+  for (uint32_t i=1; i<=m_N; i++)
+    {
+      m_Pcum[i] = m_Pcum[i] / m_Pcum[m_N];
+      NS_LOG_LOGIC ("Cumulative probability [" << i << "]=" << m_Pcum[i]);
+  }
+}
+
+uint32_t
+Consumer::GetNumberOfContents () const
+{
+  return m_N;
+}
+
+void
+Consumer::SetQ (double q)
+{
+  m_q = q;
+  SetNumberOfContents (m_N);
+}
+
+double
+Consumer::GetQ () const
+{
+  return m_q;
+}
+
+void
+Consumer::SetS (double s)
+{
+  m_s = s;
+  SetNumberOfContents (m_N);
+}
+
+double
+Consumer::GetS () const
+{
+  return m_s;
 }
 
 void
@@ -201,7 +294,17 @@ Consumer::SendPacket ()
             }
         }
 
-      seq = m_seq++;
+      if (m_requestMode == SEQUENTIAL)
+        {
+          seq = m_seq;
+        }
+      else
+        {
+          NS_ASSERT_MSG (m_seqTimeouts.size () < GetNumberOfContents (), "Content catelog exhausted!!!");
+          while (m_seqTimeouts.count (seq = GetNextSeq ())); // do not send duplicate interest
+        }
+
+      m_seq ++;
     }
 
   Ptr<Name> nameWithSequence = Create<Name> (m_interestName);
@@ -243,6 +346,31 @@ Consumer::SendPacket ()
   m_protocolHandler (packet);
 
   ScheduleNextPacket ();
+}
+
+uint32_t
+Consumer::GetNextSeq()
+{
+  uint32_t content_index = 1; //[1, m_N]
+  double p_sum = 0;
+
+  double p_random = m_rand.GetValue(0.0, 1.0);
+  while (p_random == 0)
+    {
+      p_random = m_rand.GetValue(0.0, 1.0);
+    }
+
+  for (uint32_t i=1; i<=m_N; i++)
+    {
+      p_sum = m_Pcum[i];   //m_Pcum[i] = m_Pcum[i-1] + p[i], p[0] = 0;   e.g.: p_cum[1] = p[1], p_cum[2] = p[1] + p[2]
+      if (p_random <= p_sum)
+        {
+          content_index = i;
+          break;
+        } //if
+    } //for
+
+  return content_index;
 }
 
 ///////////////////////////////////////////////////

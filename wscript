@@ -116,6 +116,7 @@ def build(bld):
         "helper/ndn-global-routing-helper.h",
 
         "apps/ndn-app.h",
+        "apps/ndn-consumer.h",
 
         "model/ndn-l3-protocol.h",
         "model/ndn-face.h",
