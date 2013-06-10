@@ -113,7 +113,7 @@ main (int argc, char *argv[])
     {
       ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute"); // No hop-by-hop interest shaping, no NACKs.
     }
-  ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", "1"); // almost no caching
+  ndnHelper.SetContentStore ("ns3::ndn::cs::Nocache");
   Ptr<ndn::FaceContainer> faces = ndnHelper.InstallAll ();
   if (shaper != "None")
     {
