@@ -47,7 +47,6 @@ private:
   double m_c;
   bool m_fast_convergence;
 
-  Time m_last_decrease;
   Time m_epoch_start;
   Time m_dMin;
   uint32_t m_last_window;

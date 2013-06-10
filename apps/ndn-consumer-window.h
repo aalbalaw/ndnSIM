@@ -78,6 +78,7 @@ protected:
 
   TracedValue<uint32_t> m_window;
   TracedValue<uint32_t> m_inFlight;
+  Time m_last_decrease;
 
 private:
   virtual void

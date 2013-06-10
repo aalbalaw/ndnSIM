@@ -27,6 +27,8 @@
 #include "ns3/string.h"
 #include "ns3/uinteger.h"
 #include "ns3/double.h"
+#include "ns3/ndn-interest.h"
+#include <boost/lexical_cast.hpp>
 
 NS_LOG_COMPONENT_DEFINE ("ndn.ConsumerWindow");
 
@@ -78,6 +80,7 @@ ConsumerWindow::GetTypeId (void)
 
 ConsumerWindow::ConsumerWindow ()
   : m_inFlight (0)
+  , m_last_decrease (0.0)
 {
 }
 
@@ -189,7 +192,13 @@ ConsumerWindow::OnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  AdjustWindowOnNack (interest, payload);
+  uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
+  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (seq);
+  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
+    {
+      AdjustWindowOnNack (interest, payload);
+      m_last_decrease = Simulator::Now();
+    }
 
   Consumer::OnNack (interest, payload);
 
@@ -201,7 +210,12 @@ ConsumerWindow::OnTimeout (uint32_t sequenceNumber)
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  AdjustWindowOnTimeout (sequenceNumber);
+  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (sequenceNumber);
+  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
+    {
+      AdjustWindowOnTimeout (sequenceNumber);
+      m_last_decrease = Simulator::Now();
+    }
 
   Consumer::OnTimeout (sequenceNumber);
 

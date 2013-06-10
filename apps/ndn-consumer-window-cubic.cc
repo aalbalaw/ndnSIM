@@ -63,7 +63,6 @@ ConsumerWindowCUBIC::ConsumerWindowCUBIC ()
   : ConsumerWindow ()
   , m_ssthresh (std::numeric_limits<uint32_t>::max ())
   , m_window_cnt (0)
-  , m_last_decrease (0.0)
   , m_epoch_start (0.0)
   , m_dMin (0.0)
   , m_last_window (0)
@@ -133,21 +132,15 @@ ConsumerWindowCUBIC::AdjustWindowOnContentObject (const Ptr<const ContentObject>
 void
 ConsumerWindowCUBIC::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
-  uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
-  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (seq);
-  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
-    {
-      m_epoch_start = Seconds(0.0);
-      m_last_decrease = Simulator::Now();
+  m_epoch_start = Seconds(0.0);
 
-      if (m_window < m_last_window && m_fast_convergence)
-        m_last_window = m_window * (2.0 - m_beta) / 2.0;
-      else
-        m_last_window = m_window;
+  if (m_window < m_last_window && m_fast_convergence)
+    m_last_window = m_window * (2.0 - m_beta) / 2.0;
+  else
+    m_last_window = m_window;
 
-      m_window = m_window * (1.0 - m_beta);
-      m_ssthresh = m_window;
-    }
+  m_window = m_window * (1.0 - m_beta);
+  m_ssthresh = m_window;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
 }
@@ -155,20 +148,15 @@ ConsumerWindowCUBIC::AdjustWindowOnNack (const Ptr<const Interest> &interest, Pt
 void
 ConsumerWindowCUBIC::AdjustWindowOnTimeout (uint32_t sequenceNumber)
 {
-  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (sequenceNumber);
-  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
-    {
-      m_epoch_start = Seconds(0.0);
-      m_last_decrease = Simulator::Now();
+  m_epoch_start = Seconds(0.0);
 
-      if (m_window < m_last_window && m_fast_convergence)
-        m_last_window = m_window * (2.0 - m_beta) / 2.0;
-      else
-        m_last_window = m_window;
+  if (m_window < m_last_window && m_fast_convergence)
+    m_last_window = m_window * (2.0 - m_beta) / 2.0;
+  else
+    m_last_window = m_window;
 
-      m_window = m_window * (1.0 - m_beta);
-      m_ssthresh = m_window;
-    }
+  m_window = m_window * (1.0 - m_beta);
+  m_ssthresh = m_window;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
 }

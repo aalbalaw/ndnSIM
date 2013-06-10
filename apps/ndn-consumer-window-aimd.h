@@ -41,7 +41,6 @@ protected:
 
   TracedValue<uint32_t> m_ssthresh;
   uint32_t m_window_cnt;
-  uint32_t m_recover;
 };
 
 } // namespace ndn

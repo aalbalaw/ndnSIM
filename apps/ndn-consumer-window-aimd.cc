@@ -49,7 +49,6 @@ ConsumerWindowAIMD::ConsumerWindowAIMD ()
   : ConsumerWindow ()
   , m_ssthresh (std::numeric_limits<uint32_t>::max ())
   , m_window_cnt (0)
-  , m_recover (0)
 {
 }
 
@@ -86,16 +85,9 @@ ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObject> 
 void
 ConsumerWindowAIMD::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
-  // multiplicative decrease
-  // but do it just once for every window of interests
-  uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
-  if (seq > m_recover)
-    {
-      m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
-      m_window = m_ssthresh;
-      m_window_cnt = 0;
-      m_recover = m_seq;
-    }
+  m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
+  m_window = m_ssthresh;
+  m_window_cnt = 0;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
 }
@@ -103,15 +95,9 @@ ConsumerWindowAIMD::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr
 void
 ConsumerWindowAIMD::AdjustWindowOnTimeout (uint32_t sequenceNumber)
 {
-  // multiplicative decrease
-  // but do it just once for every window of interests
-  if (sequenceNumber > m_recover)
-    {
-      m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
-      m_window = m_ssthresh;
-      m_window_cnt = 0;
-      m_recover = m_seq;
-    }
+  m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
+  m_window = m_ssthresh;
+  m_window_cnt = 0;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
 }
