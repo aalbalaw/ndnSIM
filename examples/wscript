@@ -19,8 +19,11 @@ def build(bld):
     obj = bld.create_ns3_program('ndn-cc-convergence', all_modules)
     obj.source = 'ndn-cc-convergence.cc'
 
-    obj = bld.create_ns3_program('ndn-cc-y', all_modules)
-    obj.source = 'ndn-cc-y.cc'
+    obj = bld.create_ns3_program('ndn-cc-cache-chain', all_modules)
+    obj.source = 'ndn-cc-cache-chain.cc'
+
+    obj = bld.create_ns3_program('ndn-cc-cache-tree', all_modules)
+    obj.source = 'ndn-cc-cache-tree.cc'
 
     obj = bld.create_ns3_program('ndn-zipf-mandelbrot', all_modules)
     obj.source = 'ndn-zipf-mandelbrot.cc'
