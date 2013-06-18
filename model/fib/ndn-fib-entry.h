@@ -71,6 +71,7 @@ public:
     : m_face (face)
     , m_status (NDN_FIB_YELLOW)
     , m_routingCost (cost)
+    , m_cwnd (1.0)
     , m_sRtt   (Seconds (0))
     , m_rttVar (Seconds (0))
     , m_realDelay (Seconds (0))
@@ -138,6 +139,24 @@ public:
   }
 
   /**
+   * @brief Get current cwnd
+   */
+  double
+  GetCwnd () const
+  {
+    return m_cwnd;
+  }
+
+  /**
+   * @brief Set cwnd
+   */
+  void
+  SetCwnd (double cwnd)
+  {
+    m_cwnd = cwnd;
+  }
+
+  /**
    * @brief Get real propagation delay to the producer, calculated based on NS-3 p2p link delays
    */
   Time
@@ -177,6 +196,8 @@ private:
 
   int32_t m_routingCost; ///< \brief routing protocol cost (interpretation of the value depends on the underlying routing protocol)
 
+  double m_cwnd; ///< \brief pseudo congestion window (for congestion-aware forwarding)
+
   Time m_sRtt;         ///< \brief smoothed round-trip time
   Time m_rttVar;       ///< \brief round-trip time variation
 
@@ -212,13 +233,14 @@ struct FaceMetricContainer
         boost::multi_index::const_mem_fun<FaceMetric,Ptr<Face>,&FaceMetric::GetFace>
       >,
 
-      // List of available faces ordered by (status, m_routingCost)
+      // List of available faces ordered by (m_status, m_routingCost, m_cwnd)
       boost::multi_index::ordered_non_unique<
         boost::multi_index::tag<i_metric>,
         boost::multi_index::composite_key<
           FaceMetric,
           boost::multi_index::const_mem_fun<FaceMetric,FaceMetric::Status,&FaceMetric::GetStatus>,
-          boost::multi_index::const_mem_fun<FaceMetric,int32_t,&FaceMetric::GetRoutingCost>
+          boost::multi_index::const_mem_fun<FaceMetric,int32_t,&FaceMetric::GetRoutingCost>,
+          boost::multi_index::const_mem_fun<FaceMetric,double,&FaceMetric::GetCwnd>
         >
       >,
 
@@ -260,6 +282,9 @@ public:
    * \param status Status to set on the FIB entry
    */
   void UpdateStatus (Ptr<Face> face, FaceMetric::Status status);
+
+  void IncreaseCwnd (Ptr<Face> face);
+  void DecreaseCwnd (Ptr<Face> face);
 
   /**
    * \brief Add or update routing metric of FIB next hop

@@ -105,6 +105,34 @@ Entry::UpdateStatus (Ptr<Face> face, FaceMetric::Status status)
 }
 
 void
+Entry::IncreaseCwnd (Ptr<Face> face)
+{
+  FaceMetricByFace::type::iterator record = m_faces.get<i_face> ().find (face);
+  NS_ASSERT_MSG (record != m_faces.get<i_face> ().end (),
+                 "Update status can be performed only on existing faces of CcxnFibEntry");
+
+  m_faces.modify (record,
+                  ll::bind (&FaceMetric::SetCwnd, ll::_1, record->GetCwnd () + 1.0 / record->GetCwnd ()));
+
+  // reordering random access index same way as by metric index
+  m_faces.get<i_nth> ().rearrange (m_faces.get<i_metric> ().begin ());
+}
+
+void
+Entry::DecreaseCwnd (Ptr<Face> face)
+{
+  FaceMetricByFace::type::iterator record = m_faces.get<i_face> ().find (face);
+  NS_ASSERT_MSG (record != m_faces.get<i_face> ().end (),
+                 "Update status can be performed only on existing faces of CcxnFibEntry");
+
+  m_faces.modify (record,
+                  ll::bind (&FaceMetric::SetCwnd, ll::_1, std::max<double> (2.0, record->GetCwnd () / 2.0)));
+
+  // reordering random access index same way as by metric index
+  m_faces.get<i_nth> ().rearrange (m_faces.get<i_metric> ().begin ());
+}
+
+void
 Entry::AddOrUpdateRoutingMetric (Ptr<Face> face, int32_t metric)
 {
   NS_LOG_FUNCTION (this);
