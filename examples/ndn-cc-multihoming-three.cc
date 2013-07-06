@@ -29,12 +29,13 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string consumer ("CUBIC"), shaper ("PIE"), strategy ("BestRoute");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
+  cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
@@ -74,7 +75,11 @@ main (int argc, char *argv[])
   ndn::StackHelper ndnHelper;
   if (shaper != "None")
     {
-      ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true");
+      if (strategy == "CongestionAware")
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true");
+      else
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
+
       ndnHelper.EnableShaper (true, 200, 0.97, Seconds(0.1), mode_enum);
     }
   else
