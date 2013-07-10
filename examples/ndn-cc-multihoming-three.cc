@@ -136,8 +136,8 @@ main (int argc, char *argv[])
   ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix", p1, 1);
   ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix", nodes.Get (2), 1);
 
-  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix", p2, 1);
   ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix", nodes.Get (3), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix", p2, 1);
 
   ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix", p3, 1);
 
