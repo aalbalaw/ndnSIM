@@ -80,7 +80,7 @@ CongestionAware::DoPropagateInterest (Ptr<Face> inFace,
 
   bool success = false;
 
-  uint32_t total_cwnd = 0;
+  double total_cwnd = 0;
   BOOST_FOREACH (const fib::FaceMetric &metricFace, pitEntry->GetFibEntry ()->m_faces.get<fib::i_nth> ())
     {
       NS_LOG_DEBUG (metricFace.GetFace () << " cwnd: " << metricFace.GetCwnd ());
@@ -188,7 +188,8 @@ CongestionAware::DidReceiveValidNack (Ptr<Face> inFace,
           NS_LOG_DEBUG ("No FwHopCountTag tag associated with received NACK");
         }
 
-        DidExhaustForwardingOptions (inFace, nonNackHeader, nonNackInterest, pitEntry);
+      // no retrial
+      DidExhaustForwardingOptions (inFace, nonNackHeader, nonNackInterest, pitEntry);
     }
 }
 

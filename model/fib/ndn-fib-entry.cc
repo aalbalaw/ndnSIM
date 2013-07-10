@@ -126,7 +126,7 @@ Entry::DecreaseCwnd (Ptr<Face> face)
                  "Update status can be performed only on existing faces of CcxnFibEntry");
 
   m_faces.modify (record,
-                  ll::bind (&FaceMetric::SetCwnd, ll::_1, std::max<double> (2.0, record->GetCwnd () / 2.0)));
+                  ll::bind (&FaceMetric::SetCwnd, ll::_1, record->GetCwnd () * 0.8));
 
   // reordering random access index same way as by metric index
   m_faces.get<i_nth> ().rearrange (m_faces.get<i_metric> ().begin ());
