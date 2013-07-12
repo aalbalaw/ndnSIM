@@ -36,7 +36,7 @@ main (int argc, char *argv[])
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
 
   CommandLine cmd;
-  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD)", consumer);
+  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD/Relentless)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("num_content", "Total number of contents", num_content);
   cmd.AddValue("q", "Parameter of improve rank for Zipf-Mandelbrot", q);
@@ -117,6 +117,8 @@ main (int argc, char *argv[])
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRAAQM");
   else if (consumer == "AIMD")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
+  else if (consumer == "Relentless")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRelentless");
   else
     return -1;
 
