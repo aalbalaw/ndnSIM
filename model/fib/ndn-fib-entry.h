@@ -71,7 +71,10 @@ public:
     : m_face (face)
     , m_status (NDN_FIB_YELLOW)
     , m_routingCost (cost)
-    , m_cwnd (1.0)
+    , m_cngLevel (0.0)
+    , m_cngLevelStarted (false)
+    , m_nack (0)
+    , m_data (0)
     , m_sRtt   (Seconds (0))
     , m_rttVar (Seconds (0))
     , m_realDelay (Seconds (0))
@@ -101,6 +104,20 @@ public:
    */
   void
   UpdateRtt (const Time &rttSample);
+
+  /**
+   * \brief Update congestion level counters
+   * \param nack Received a NACK or DATA packet
+   */
+  void
+  UpdateCngLevelCounter (const bool nack);
+
+  /**
+   * \brief Recalculate congestion level
+   * \param nack Received a NACK or DATA packet
+   */
+  void
+  RecalculateCngLevel ();
 
   /**
    * @brief Get current status of FIB entry
@@ -139,21 +156,21 @@ public:
   }
 
   /**
-   * @brief Get current cwnd
+   * @brief Get current congestion level
    */
   double
-  GetCwnd () const
+  GetCngLevel () const
   {
-    return m_cwnd;
+    return m_cngLevel;
   }
 
   /**
-   * @brief Set cwnd
+   * @brief Set congestion level
    */
   void
-  SetCwnd (double cwnd)
+  SetCngLevel (double cngLevel)
   {
-    m_cwnd = cwnd;
+    m_cngLevel = cngLevel;
   }
 
   /**
@@ -196,7 +213,10 @@ private:
 
   int32_t m_routingCost; ///< \brief routing protocol cost (interpretation of the value depends on the underlying routing protocol)
 
-  double m_cwnd; ///< \brief pseudo congestion window (for congestion-aware forwarding)
+  double m_cngLevel; ///< \brief congestion level (for congestion-aware forwarding)
+  bool m_cngLevelStarted;
+  uint32_t m_nack;
+  uint32_t m_data;
 
   Time m_sRtt;         ///< \brief smoothed round-trip time
   Time m_rttVar;       ///< \brief round-trip time variation
@@ -233,14 +253,14 @@ struct FaceMetricContainer
         boost::multi_index::const_mem_fun<FaceMetric,Ptr<Face>,&FaceMetric::GetFace>
       >,
 
-      // List of available faces ordered by (m_status, m_routingCost, m_cwnd)
+      // List of available faces ordered by (m_status, m_routingCost, m_cngLevel)
       boost::multi_index::ordered_non_unique<
         boost::multi_index::tag<i_metric>,
         boost::multi_index::composite_key<
           FaceMetric,
           boost::multi_index::const_mem_fun<FaceMetric,FaceMetric::Status,&FaceMetric::GetStatus>,
           boost::multi_index::const_mem_fun<FaceMetric,int32_t,&FaceMetric::GetRoutingCost>,
-          boost::multi_index::const_mem_fun<FaceMetric,double,&FaceMetric::GetCwnd>
+          boost::multi_index::const_mem_fun<FaceMetric,double,&FaceMetric::GetCngLevel>
         >
       >,
 
@@ -283,9 +303,6 @@ public:
    */
   void UpdateStatus (Ptr<Face> face, FaceMetric::Status status);
 
-  void IncreaseCwnd (Ptr<Face> face);
-  void DecreaseCwnd (Ptr<Face> face);
-
   /**
    * \brief Add or update routing metric of FIB next hop
    *
@@ -312,6 +329,12 @@ public:
    */
   void
   UpdateFaceRtt (Ptr<Face> face, const Time &sample);
+
+  /**
+   * @brief Update congestion level counters for the face
+   */
+  void
+  UpdateFaceCngLevelCounter (Ptr<Face> face, const bool nack);
 
   /**
    * \brief Get prefix for the FIB entry

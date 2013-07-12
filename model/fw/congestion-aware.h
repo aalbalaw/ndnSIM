@@ -40,10 +40,6 @@ public:
   CongestionAware();
 
 protected:
-  virtual void
-  WillSatisfyPendingInterest (Ptr<Face> inFace,
-                              Ptr<pit::Entry> pitEntry);
-
   virtual bool
   DoPropagateInterest (Ptr<Face> inFace,
                        Ptr<const Interest> header,
@@ -51,7 +47,8 @@ protected:
                        Ptr<pit::Entry> pitEntry);
 
   virtual void
-  WillEraseTimedOutPendingInterest (Ptr<pit::Entry> pitEntry);
+  WillSatisfyPendingInterest (Ptr<Face> inFace,
+                              Ptr<pit::Entry> pitEntry);
 
   virtual void
   DidReceiveValidNack (Ptr<Face> incomingFace,
