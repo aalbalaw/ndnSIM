@@ -16,49 +16,48 @@
  * Author: Yaogong Wang <ywang15@ncsu.edu>
  */
 
-#include "ndn-consumer-window-aimd.h"
-#include "ns3/simulator.h"
+#include "ndn-consumer-window-relentless.h"
 #include "ns3/ndn-interest.h"
 #include "ns3/log.h"
 
 #include <boost/lexical_cast.hpp>
 
-NS_LOG_COMPONENT_DEFINE ("ndn.ConsumerWindowAIMD");
+NS_LOG_COMPONENT_DEFINE ("ndn.ConsumerWindowRelentless");
 
 namespace ns3 {
 namespace ndn {
 
-NS_OBJECT_ENSURE_REGISTERED (ConsumerWindowAIMD);
+NS_OBJECT_ENSURE_REGISTERED (ConsumerWindowRelentless);
 
 TypeId
-ConsumerWindowAIMD::GetTypeId (void)
+ConsumerWindowRelentless::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::ndn::ConsumerWindowAIMD")
+  static TypeId tid = TypeId ("ns3::ndn::ConsumerWindowRelentless")
     .SetGroupName ("Ndn")
     .SetParent<ConsumerWindow> ()
-    .AddConstructor<ConsumerWindowAIMD> ()
+    .AddConstructor<ConsumerWindowRelentless> ()
 
     .AddTraceSource ("SsthreshTrace",
                      "Ssthresh that determines whether we are in slow start or congestion avoidance phase",
-                     MakeTraceSourceAccessor (&ConsumerWindowAIMD::m_ssthresh))
+                     MakeTraceSourceAccessor (&ConsumerWindowRelentless::m_ssthresh))
     ;
 
   return tid;
 }
 
-ConsumerWindowAIMD::ConsumerWindowAIMD ()
+ConsumerWindowRelentless::ConsumerWindowRelentless ()
   : ConsumerWindow ()
   , m_ssthresh (std::numeric_limits<uint32_t>::max ())
   , m_window_cnt (0)
 {
 }
 
-ConsumerWindowAIMD::~ConsumerWindowAIMD ()
+ConsumerWindowRelentless::~ConsumerWindowRelentless ()
 {
 }
 
 void
-ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
+ConsumerWindowRelentless::AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                                        Ptr<Packet> payload)
 {
   if (m_window < m_ssthresh)
@@ -84,27 +83,10 @@ ConsumerWindowAIMD::AdjustWindowOnContentObject (const Ptr<const ContentObject> 
 }
 
 void
-ConsumerWindowAIMD::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
+ConsumerWindowRelentless::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
-  uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
-  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (seq);
-  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
-    {
-      m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
-      m_window = m_ssthresh;
-      m_window_cnt = 0;
-      m_last_decrease = Simulator::Now();
-    }
-
-  NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
-}
-
-void
-ConsumerWindowAIMD::AdjustWindowOnTimeout (uint32_t sequenceNumber)
-{
-  m_ssthresh = std::max<uint32_t> (2, m_inFlight / 2);
-  m_window = m_ssthresh;
-  m_window_cnt = 0;
+  m_window = std::max<uint32_t> (0, m_window - 1);
+  m_ssthresh = m_window;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
 }

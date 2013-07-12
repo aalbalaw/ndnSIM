@@ -192,13 +192,7 @@ ConsumerWindow::OnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload
 {
   if (m_inFlight > static_cast<uint32_t> (0)) m_inFlight--;
 
-  uint32_t seq = boost::lexical_cast<uint32_t> (interest->GetName ().GetComponents ().back ());
-  SeqTimeoutsContainer::iterator entry = m_seqLastDelay.find (seq);
-  if (entry != m_seqLastDelay.end () && entry->time > m_last_decrease)
-    {
-      AdjustWindowOnNack (interest, payload);
-      m_last_decrease = Simulator::Now();
-    }
+  AdjustWindowOnNack (interest, payload);
 
   Consumer::OnNack (interest, payload);
 
