@@ -85,7 +85,7 @@ ConsumerWindowRelentless::AdjustWindowOnContentObject (const Ptr<const ContentOb
 void
 ConsumerWindowRelentless::AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
 {
-  m_window = std::max<uint32_t> (0, m_window - 1);
+  m_window = std::max<uint32_t> (1, m_window - 1);
   m_ssthresh = m_window;
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
