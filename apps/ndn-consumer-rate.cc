@@ -52,15 +52,10 @@ ConsumerRate::GetTypeId (void)
                    IntegerValue (std::numeric_limits<uint32_t>::max ()),
                    MakeIntegerAccessor (&ConsumerRate::m_seqMax),
                    MakeIntegerChecker<uint32_t> ())
-    .AddAttribute ("InitFreq",
+    .AddAttribute ("Frequency",
                    "Initial interest packet sending frequency in hertz",
                    DoubleValue (10.0),
                    MakeDoubleAccessor (&ConsumerRate::m_frequency),
-                   MakeDoubleChecker<double> ())
-    .AddAttribute ("ProbeFactor",
-                   "Rate probing factor",
-                   DoubleValue (10.0),
-                   MakeDoubleAccessor (&ConsumerRate::m_probeFactor),
                    MakeDoubleChecker<double> ())
     ;
 
@@ -69,9 +64,6 @@ ConsumerRate::GetTypeId (void)
 
 ConsumerRate::ConsumerRate ()
   : m_firstTime (true)
-  , m_incomingDataFrequency (0.0)
-  , m_prevData (0.0)
-  , m_inSlowStart (true)
 {
 }
 
@@ -97,30 +89,42 @@ void
 ConsumerRate::OnContentObject (const Ptr<const ContentObject> &contentObject,
                                Ptr< Packet> payload)
 {
-  if (m_prevData != Seconds (0.0))
-    {
-      double freq = 1.0 / (Simulator::Now() - m_prevData).GetSeconds();
-      if (m_incomingDataFrequency == 0.0)
-        {
-          m_incomingDataFrequency = freq;
-        }
-      else
-        {
-          m_incomingDataFrequency = m_incomingDataFrequency * 7.0 / 8.0 + freq / 8.0;
-          if (freq < m_incomingDataFrequency)
-            m_inSlowStart = false;
-        }
-
-      if (m_inSlowStart)
-        m_frequency = m_incomingDataFrequency * 2.0;
-      else
-        m_frequency = m_incomingDataFrequency + m_probeFactor;
-
-      NS_LOG_DEBUG ("Current frequency: " << m_frequency);
-    }
-
-  m_prevData = Simulator::Now();
+  AdjustFrequencyOnContentObject (contentObject, payload);
   Consumer::OnContentObject (contentObject, payload);
+}
+
+void
+ConsumerRate::OnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload)
+{
+  AdjustFrequencyOnNack (interest, payload);
+  Consumer::OnNack (interest, payload);
+}
+
+void
+ConsumerRate::OnTimeout (uint32_t sequenceNumber)
+{
+  AdjustFrequencyOnTimeout (sequenceNumber);
+  Consumer::OnTimeout (sequenceNumber);
+}
+
+void
+ConsumerRate::AdjustFrequencyOnContentObject (const Ptr<const ContentObject> &contentObject,
+                                                Ptr<Packet> payload)
+{
+  NS_LOG_DEBUG ("Current frequency: " << m_frequency);
+}
+
+void
+ConsumerRate::AdjustFrequencyOnNack (const Ptr<const Interest> &interest,
+                                       Ptr<Packet> payload)
+{
+  NS_LOG_DEBUG ("Current frequency: " << m_frequency);
+}
+
+void
+ConsumerRate::AdjustFrequencyOnTimeout (uint32_t sequenceNumber)
+{
+  NS_LOG_DEBUG ("Current frequency: " << m_frequency);
 }
 
 } // namespace ndn

@@ -25,7 +25,7 @@ namespace ndn {
 
 /**
  * @ingroup ndn
- * \brief Ndn application for sending out Interest packets at a "constant" rate (Poisson process)
+ * \brief Ndn application for sending out Interest packets at a "constant" rate
  */
 class ConsumerRate: public Consumer
 {
@@ -38,6 +38,20 @@ public:
   ConsumerRate ();
   virtual ~ConsumerRate ();
 
+  // From App
+  // virtual void
+  // OnInterest (const Ptr<const Interest> &interest);
+
+  virtual void
+  OnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload);
+
+  virtual void
+  OnContentObject (const Ptr<const ContentObject> &contentObject,
+                   Ptr<Packet> payload);
+
+  virtual void
+  OnTimeout (uint32_t sequenceNumber);
+
 protected:
   /**
    * \brief Constructs the Interest packet and sends it using a callback to the underlying NDN protocol
@@ -46,16 +60,16 @@ protected:
   ScheduleNextPacket ();
 
   virtual void
-  OnContentObject (const Ptr<const ContentObject> &contentObject,
-                   Ptr<Packet> payload);
+  AdjustFrequencyOnNack (const Ptr<const Interest> &interest,
+                         Ptr<Packet> payload);
+  virtual void
+  AdjustFrequencyOnContentObject (const Ptr<const ContentObject> &contentObject,
+                                  Ptr<Packet> payload);
+  virtual void
+  AdjustFrequencyOnTimeout (uint32_t sequenceNumber);
 
   double m_frequency; // interest packet sending frequency (in hertz)
   bool m_firstTime;
-  double m_incomingDataFrequency;
-  Time m_prevData;
-
-  double m_probeFactor;
-  bool m_inSlowStart;
 };
 
 } // namespace ndn
