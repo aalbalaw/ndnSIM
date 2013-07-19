@@ -37,7 +37,7 @@ main (int argc, char *argv[])
 
   CommandLine cmd;
   cmd.AddValue("twoway", "0 - one-way traffic, 1 - two-way traffic", twoway);
-  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD/Relentless)", consumer);
+  cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("bw_a", "Link bandwidth from 1 to 2", bw_a);
   cmd.AddValue("bw_b", "Link bandwidth from 2 to 1", bw_b);
@@ -136,16 +136,18 @@ main (int argc, char *argv[])
 
   // Install consumer
   ndn::AppHelper *consumerHelper;
-  if (consumer == "CUBIC")
+  if (consumer == "AIMD")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
+  else if (consumer == "CUBIC")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowCUBIC");
-  else if (consumer == "Rate")
-    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRate");
   else if (consumer == "RAAQM")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRAAQM");
-  else if (consumer == "AIMD")
-    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
-  else if (consumer == "Relentless")
+  else if (consumer == "WindowRelentless")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRelentless");
+  else if (consumer == "RateRelentless")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRateRelentless");
+  else if (consumer == "RateFeedback")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRateFeedback");
   else
     return -1;
 

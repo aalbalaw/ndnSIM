@@ -33,7 +33,7 @@ main (int argc, char *argv[])
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
 
   CommandLine cmd;
-  cmd.AddValue("consumer", "Consumer type (CUBIC/Rate/RAAQM/AIMD/Relentless)", consumer);
+  cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
@@ -97,16 +97,18 @@ main (int argc, char *argv[])
 
   // Install consumer
   ndn::AppHelper *consumerHelper;
-  if (consumer == "CUBIC")
+  if (consumer == "AIMD")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
+  else if (consumer == "CUBIC")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowCUBIC");
-  else if (consumer == "Rate")
-    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRate");
   else if (consumer == "RAAQM")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRAAQM");
-  else if (consumer == "AIMD")
-    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowAIMD");
-  else if (consumer == "Relentless")
+  else if (consumer == "WindowRelentless")
     consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerWindowRelentless");
+  else if (consumer == "RateRelentless")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRateRelentless");
+  else if (consumer == "RateFeedback")
+    consumerHelper = new ndn::AppHelper ("ns3::ndn::ConsumerRateFeedback");
   else
     return -1;
 
