@@ -30,7 +30,7 @@ int
 main (int argc, char *argv[])
 {
   std::string consumer ("CUBIC"), shaper ("PIE"), strategy ("BestRoute");
-  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
+  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt");
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
@@ -120,7 +120,7 @@ main (int argc, char *argv[])
   consumerHelper->Install (c1);
 
   delete consumerHelper;
-  
+
   // Install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
   producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
@@ -134,7 +134,7 @@ main (int argc, char *argv[])
   producerHelper.SetPrefix ("/prefix");
   producerHelper.Install (p3);
 
-  // Manually add multipath routes 
+  // Manually add multipath routes
   ndn::StackHelper::AddRoute (c1, "/prefix", nodes.Get (1), 1);
 
   ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix", p1, 1);
@@ -145,7 +145,7 @@ main (int argc, char *argv[])
 
   ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix", p3, 1);
 
-  Simulator::Stop (Seconds (70.1));
+  Simulator::Stop (Seconds (130.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));

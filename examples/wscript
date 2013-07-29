@@ -25,11 +25,11 @@ def build(bld):
     obj = bld.create_ns3_program('ndn-cc-cache-tree', all_modules)
     obj.source = 'ndn-cc-cache-tree.cc'
 
-    obj = bld.create_ns3_program('ndn-cc-multihoming-two', all_modules)
-    obj.source = 'ndn-cc-multihoming-two.cc'
+    obj = bld.create_ns3_program('ndn-cc-mp-efficiency', all_modules)
+    obj.source = 'ndn-cc-mp-efficiency.cc'
 
-    obj = bld.create_ns3_program('ndn-cc-multihoming-three', all_modules)
-    obj.source = 'ndn-cc-multihoming-three.cc'
+    obj = bld.create_ns3_program('ndn-cc-mp-fairness', all_modules)
+    obj.source = 'ndn-cc-mp-fairness.cc'
 
     obj = bld.create_ns3_program('ndn-zipf-mandelbrot', all_modules)
     obj.source = 'ndn-zipf-mandelbrot.cc'

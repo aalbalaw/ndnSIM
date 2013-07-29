@@ -29,15 +29,15 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE"), congestion ("Local"), strategy ("BestRoute"), competitor ("None");
-  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
+  std::string consumer ("CUBIC"), shaper ("PIE"), congestion ("Local"), strategy ("CongestionAware"), competitor ("Both");
+  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("congestion", "Congestion type (Local/Remote)", congestion);
   cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
-  cmd.AddValue("competitor", "Presence of competing flows (None/More/Less)", competitor);
+  cmd.AddValue("competitor", "Presence of competing flows (None/Less/More/Both)", competitor);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
@@ -54,9 +54,9 @@ main (int argc, char *argv[])
 
   // Setup topology
   NodeContainer nodes;
-  nodes.Create (7);
+  nodes.Create (8);
 
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("75"));
+  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("225"));
 
   PointToPointHelper p2p;
   p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
@@ -65,9 +65,9 @@ main (int argc, char *argv[])
 
   if (congestion == "Local")
     {
-      p2p.SetDeviceAttribute("DataRate", StringValue ("10Mbps"));
+      p2p.SetDeviceAttribute("DataRate", StringValue ("12Mbps"));
       p2p.Install (nodes.Get (1), nodes.Get (2));
-      p2p.SetDeviceAttribute("DataRate", StringValue ("5Mbps"));
+      p2p.SetDeviceAttribute("DataRate", StringValue ("18Mbps"));
       p2p.Install (nodes.Get (1), nodes.Get (3));
       p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
       p2p.Install (nodes.Get (2), nodes.Get (4));
@@ -78,9 +78,9 @@ main (int argc, char *argv[])
       p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
       p2p.Install (nodes.Get (1), nodes.Get (2));
       p2p.Install (nodes.Get (1), nodes.Get (3));
-      p2p.SetDeviceAttribute("DataRate", StringValue ("10Mbps"));
+      p2p.SetDeviceAttribute("DataRate", StringValue ("12Mbps"));
       p2p.Install (nodes.Get (2), nodes.Get (4));
-      p2p.SetDeviceAttribute("DataRate", StringValue ("5Mbps"));
+      p2p.SetDeviceAttribute("DataRate", StringValue ("18Mbps"));
       p2p.Install (nodes.Get (3), nodes.Get (5));
     }
   else
@@ -88,6 +88,8 @@ main (int argc, char *argv[])
 
   p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
   p2p.Install (nodes.Get (6), nodes.Get (1));
+  p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
+  p2p.Install (nodes.Get (7), nodes.Get (1));
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
@@ -98,7 +100,7 @@ main (int argc, char *argv[])
       else
         ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
 
-      ndnHelper.EnableShaper (true, 75, 0.97, Seconds(0.1), mode_enum);
+      ndnHelper.EnableShaper (true, 225, 0.97, Seconds(0.1), mode_enum);
     }
   else
     {
@@ -110,6 +112,7 @@ main (int argc, char *argv[])
   // Getting containers for the consumer/producer
   Ptr<Node> c1 = nodes.Get (0);
   Ptr<Node> c2 = nodes.Get (6);
+  Ptr<Node> c3 = nodes.Get (7);
   Ptr<Node> p1 = nodes.Get (4);
   Ptr<Node> p2 = nodes.Get (5);
 
@@ -137,37 +140,37 @@ main (int argc, char *argv[])
   consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
   consumerHelper->Install (c1);
 
-  if (competitor != "None")
+  if (competitor == "Less" || competitor == "Both")
     {
       consumerHelper->SetPrefix ("/prefix2");
       consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
       consumerHelper->Install (c2);
     }
 
+  if (competitor == "More" || competitor == "Both")
+    {
+      consumerHelper->SetPrefix ("/prefix3");
+      consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+      consumerHelper->Install (c3);
+    }
+
   delete consumerHelper;
-  
+
   // Install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
   producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
 
   producerHelper.SetPrefix ("/prefix1");
   producerHelper.Install (p1);
+  producerHelper.SetPrefix ("/prefix2");
+  producerHelper.Install (p1);
 
   producerHelper.SetPrefix ("/prefix1");
   producerHelper.Install (p2);
+  producerHelper.SetPrefix ("/prefix3");
+  producerHelper.Install (p2);
 
-  if (competitor == "More")
-    {
-      producerHelper.SetPrefix ("/prefix2");
-      producerHelper.Install (p1);
-    }
-  else if (competitor == "Less")
-    {
-      producerHelper.SetPrefix ("/prefix2");
-      producerHelper.Install (p2);
-    }
-
-  // Manually add multipath routes 
+  // Manually add multipath routes
   ndn::StackHelper::AddRoute (c1, "/prefix1", nodes.Get (1), 1);
 
   ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix1", nodes.Get (2), 1);
@@ -176,20 +179,15 @@ main (int argc, char *argv[])
   ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix1", p1, 1);
   ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix1", p2, 1);
 
-  if (competitor == "More")
-    {
-      ndn::StackHelper::AddRoute (c2, "/prefix2", nodes.Get (1), 1);
-      ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix2", nodes.Get (2), 1);
-      ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix2", p1, 1);
-    }
-  else if (competitor == "Less")
-    {
-      ndn::StackHelper::AddRoute (c2, "/prefix2", nodes.Get (1), 1);
-      ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix2", nodes.Get (3), 1);
-      ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix2", p2, 1);
-    }
+  ndn::StackHelper::AddRoute (c2, "/prefix2", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix2", nodes.Get (2), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix2", p1, 1);
 
-  Simulator::Stop (Seconds (70.1));
+  ndn::StackHelper::AddRoute (c3, "/prefix3", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix3", nodes.Get (3), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix3", p2, 1);
+
+  Simulator::Stop (Seconds (130.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
