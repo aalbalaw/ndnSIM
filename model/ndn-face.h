@@ -237,7 +237,7 @@ private:
   ProtocolHandler m_protocolHandler; ///< Callback via which packets are getting send to Ndn stack
   bool m_ifup; ///< \brief flag indicating that the interface is UP
   uint32_t m_id; ///< \brief id of the interface in NDN stack (per-node uniqueness)
-  uint32_t m_metric; ///< \brief metric of the face
+  uint16_t m_metric; ///< \brief metric of the face
   uint32_t m_flags;
 
   TracedCallback<Ptr<const Packet> > m_txTrace;
