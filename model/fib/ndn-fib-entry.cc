@@ -73,31 +73,31 @@ FaceMetric::UpdateRtt (const Time &rttSample)
 }
 
 void
-FaceMetric::UpdateCngLevelCounter (const bool nack)
+FaceMetric::UpdateCounter (const bool nack)
 {
   if (nack)
     m_nack++;
   else
     m_data++;
 
-  if (!m_cngLevelStarted)
+  if (!m_counterStarted)
     {
-      m_cngLevelStarted = true;
-      Simulator::Schedule (Seconds(0.1), &FaceMetric::RecalculateCngLevel, this);
+      m_counterStarted = true;
+      Simulator::Schedule (Seconds(0.1), &FaceMetric::RecalculateNackRatio, this);
     }
 }
 
 void
-FaceMetric::RecalculateCngLevel ()
+FaceMetric::RecalculateNackRatio ()
 {
-  NS_LOG_FUNCTION (this << m_nack << m_data << m_cngLevel);
-
   double sample = m_nack>0 ? 1.0 * m_nack / (m_nack + m_data) : 0.0;
-  m_cngLevel = m_cngLevel * 0.875 + sample * 0.125;
+  m_nackRatio = m_nackRatio * 0.875 + sample * 0.125;
+  if (m_nackRatio < 1e-6)
+    m_nackRatio = 1e-6;
 
   m_nack = 0;
   m_data = 0;
-  Simulator::Schedule (Seconds(0.1), &FaceMetric::RecalculateCngLevel, this);
+  Simulator::Schedule (Seconds(0.1), &FaceMetric::RecalculateNackRatio, this);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -133,14 +133,14 @@ Entry::UpdateStatus (Ptr<Face> face, FaceMetric::Status status)
 }
 
 void
-Entry::UpdateFaceCngLevelCounter (Ptr<Face> face, const bool nack)
+Entry::UpdateFaceCounter (Ptr<Face> face, const bool nack)
 {
   FaceMetricByFace::type::iterator record = m_faces.get<i_face> ().find (face);
   NS_ASSERT_MSG (record != m_faces.get<i_face> ().end (),
                  "Update status can be performed only on existing faces of CcxnFibEntry");
 
   m_faces.modify (record,
-                  ll::bind (&FaceMetric::UpdateCngLevelCounter, ll::_1, nack));
+                  ll::bind (&FaceMetric::UpdateCounter, ll::_1, nack));
 
   // reordering random access index same way as by metric index
   m_faces.get<i_nth> ().rearrange (m_faces.get<i_metric> ().begin ());
@@ -238,7 +238,7 @@ std::ostream& operator<< (std::ostream& os, const FaceMetric &metric)
 {
   static const std::string statusString[] = {"","g","y","r"};
 
-  os << *metric.m_face << "(" << metric.m_routingCost << ","<< statusString [metric.m_status] << "," << metric.m_face->GetMetric () << "," << metric.m_cngLevel << ")";
+  os << *metric.m_face << "(" << metric.m_routingCost << ","<< statusString [metric.m_status] << "," << metric.m_face->GetMetric () << "," << metric.m_nackRatio << ")";
   return os;
 }
 

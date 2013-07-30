@@ -78,25 +78,33 @@ CongestionAware::DoPropagateInterest (Ptr<Face> inFace,
   NS_LOG_FUNCTION (this);
   NS_ASSERT_MSG (m_pit != 0, "PIT should be aggregated with forwarding strategy");
 
-  int propagatedCount = 0;
+  bool success = false;
 
+  double total = 0.0;
   BOOST_FOREACH (const fib::FaceMetric &metricFace, pitEntry->GetFibEntry ()->m_faces.get<fib::i_nth> ())
     {
-      NS_LOG_DEBUG (metricFace.GetFace () << " cnglevel: " << metricFace.GetCngLevel ());
-      if (!TrySendOutInterest (inFace, metricFace.GetFace (), header, origPacket, pitEntry))
-        {
-          if (CanSendOutInterest (inFace, metricFace.GetFace (), header, origPacket, pitEntry))
-            pitEntry->GetFibEntry ()->UpdateFaceCngLevelCounter (metricFace.GetFace (), true);
-
-          continue;
-        }
-
-      propagatedCount++;
-      break; // do only once
+      NS_LOG_DEBUG (pitEntry->GetFibEntry ()->GetPrefix () << " " << metricFace.GetFace () << " NackRatio: " << metricFace.GetNackRatio ());
+      total += 1.0 / metricFace.GetNackRatio();
     }
 
-  NS_LOG_INFO ("Propagated to " << propagatedCount << " faces");
-  return propagatedCount > 0;
+  UniformVariable r (0, 1.0);
+  double p_random = r.GetValue ();
+  double p_sum = 0;
+  BOOST_FOREACH (const fib::FaceMetric &metricFace, pitEntry->GetFibEntry ()->m_faces.get<fib::i_nth> ())
+    {
+      p_sum += 1.0 / (metricFace.GetNackRatio() * total);
+      if (p_random <= p_sum)
+        {
+          success = TrySendOutInterest (inFace, metricFace.GetFace (), header, origPacket, pitEntry);
+
+          if (!success)
+            pitEntry->GetFibEntry ()->UpdateFaceCounter (metricFace.GetFace (), true);
+
+          break;
+        }
+    }
+
+  return success;
 }
 
 void
@@ -105,7 +113,7 @@ CongestionAware::WillSatisfyPendingInterest (Ptr<Face> inFace,
 {
   if (inFace != 0)
     {
-      pitEntry->GetFibEntry ()->UpdateFaceCngLevelCounter (inFace, false);
+      pitEntry->GetFibEntry ()->UpdateFaceCounter (inFace, false);
     }
 
   super::WillSatisfyPendingInterest (inFace, pitEntry);
@@ -122,10 +130,50 @@ CongestionAware::DidReceiveValidNack (Ptr<Face> inFace,
       (nackCode == Interest::NACK_CONGESTION ||
        nackCode == Interest::NACK_GIVEUP_PIT))
     {
-      pitEntry->GetFibEntry ()->UpdateFaceCngLevelCounter (inFace, true);
+      pitEntry->GetFibEntry ()->UpdateFaceCounter (inFace, true);
     }
 
-  super::DidReceiveValidNack (inFace, nackCode, header, origPacket, pitEntry);
+  NS_LOG_DEBUG ("nackCode: " << nackCode << " for [" << header->GetName () << "]");
+
+  // If NACK is NACK_GIVEUP_PIT, then neighbor gave up trying to and removed it's PIT entry.
+  // So, if we had an incoming entry to this neighbor, then we can remove it now
+  if (nackCode == Interest::NACK_GIVEUP_PIT)
+    {
+      pitEntry->RemoveIncoming (inFace);
+    }
+
+  if (nackCode == Interest::NACK_LOOP ||
+      nackCode == Interest::NACK_CONGESTION ||
+      nackCode == Interest::NACK_GIVEUP_PIT)
+    {
+      pitEntry->SetWaitingInVain (inFace);
+
+      if (!pitEntry->AreAllOutgoingInVain ()) // not all ougtoing are in vain
+        {
+          NS_LOG_DEBUG ("Not all outgoing are in vain");
+          // suppress
+          // Don't do anything, we are still expecting data from some other face
+          m_dropNacks (header, inFace);
+          return;
+        }
+
+      Ptr<Packet> nonNackInterest = Create<Packet> ();
+      Ptr<Interest> nonNackHeader = Create<Interest> (*header);
+      nonNackHeader->SetNack (Interest::NORMAL_INTEREST);
+      nonNackInterest->AddHeader (*nonNackHeader);
+
+      FwHopCountTag hopCountTag;
+      if (origPacket->PeekPacketTag (hopCountTag))
+        {
+          nonNackInterest->AddPacketTag (hopCountTag);
+        }
+      else
+        {
+          NS_LOG_DEBUG ("No FwHopCountTag tag associated with received NACK");
+        }
+
+      DidExhaustForwardingOptions (inFace, nonNackHeader, nonNackInterest, pitEntry);
+    }
 }
 
 

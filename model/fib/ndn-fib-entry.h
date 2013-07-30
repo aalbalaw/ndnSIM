@@ -71,8 +71,8 @@ public:
     : m_face (face)
     , m_status (NDN_FIB_YELLOW)
     , m_routingCost (cost)
-    , m_cngLevel (0.0)
-    , m_cngLevelStarted (false)
+    , m_nackRatio (1e-6)
+    , m_counterStarted (false)
     , m_nack (0)
     , m_data (0)
     , m_sRtt   (Seconds (0))
@@ -110,14 +110,13 @@ public:
    * \param nack Received a NACK or DATA packet
    */
   void
-  UpdateCngLevelCounter (const bool nack);
+  UpdateCounter (const bool nack);
 
   /**
-   * \brief Recalculate congestion level
-   * \param nack Received a NACK or DATA packet
+   * \brief Recalculate NACK ratio
    */
   void
-  RecalculateCngLevel ();
+  RecalculateNackRatio ();
 
   /**
    * @brief Get current status of FIB entry
@@ -156,21 +155,21 @@ public:
   }
 
   /**
-   * @brief Get current congestion level
+   * @brief Get current NACK ratio
    */
   double
-  GetCngLevel () const
+  GetNackRatio () const
   {
-    return m_cngLevel;
+    return m_nackRatio;
   }
 
   /**
-   * @brief Set congestion level
+   * @brief Set NACK ratio
    */
   void
-  SetCngLevel (double cngLevel)
+  SetNackRate (double nackRatio)
   {
-    m_cngLevel = cngLevel;
+    m_nackRatio = nackRatio;
   }
 
   /**
@@ -213,8 +212,8 @@ private:
 
   int32_t m_routingCost; ///< \brief routing protocol cost (interpretation of the value depends on the underlying routing protocol)
 
-  double m_cngLevel; ///< \brief congestion level (for congestion-aware forwarding)
-  bool m_cngLevelStarted;
+  double m_nackRatio; ///< \brief NACK ratio (for congestion-aware forwarding)
+  bool m_counterStarted;
   uint32_t m_nack;
   uint32_t m_data;
 
@@ -253,14 +252,14 @@ struct FaceMetricContainer
         boost::multi_index::const_mem_fun<FaceMetric,Ptr<Face>,&FaceMetric::GetFace>
       >,
 
-      // List of available faces ordered by (m_status, m_routingCost, m_cngLevel)
+      // List of available faces ordered by (m_status, m_routingCost, m_nackRatio)
       boost::multi_index::ordered_non_unique<
         boost::multi_index::tag<i_metric>,
         boost::multi_index::composite_key<
           FaceMetric,
           boost::multi_index::const_mem_fun<FaceMetric,FaceMetric::Status,&FaceMetric::GetStatus>,
           boost::multi_index::const_mem_fun<FaceMetric,int32_t,&FaceMetric::GetRoutingCost>,
-          boost::multi_index::const_mem_fun<FaceMetric,double,&FaceMetric::GetCngLevel>
+          boost::multi_index::const_mem_fun<FaceMetric,double,&FaceMetric::GetNackRatio>
         >
       >,
 
@@ -334,7 +333,7 @@ public:
    * @brief Update congestion level counters for the face
    */
   void
-  UpdateFaceCngLevelCounter (Ptr<Face> face, const bool nack);
+  UpdateFaceCounter (Ptr<Face> face, const bool nack);
 
   /**
    * \brief Get prefix for the FIB entry
