@@ -72,6 +72,7 @@ public:
     , m_status (NDN_FIB_YELLOW)
     , m_routingCost (cost)
     , m_nackRatio (1e-6)
+    , m_nackRatioRecalculateInterval (Seconds (0.1))
     , m_counterStarted (false)
     , m_nack (0)
     , m_data (0)
@@ -213,6 +214,7 @@ private:
   int32_t m_routingCost; ///< \brief routing protocol cost (interpretation of the value depends on the underlying routing protocol)
 
   double m_nackRatio; ///< \brief NACK ratio (for congestion-aware forwarding)
+  Time m_nackRatioRecalculateInterval;
   bool m_counterStarted;
   uint32_t m_nack;
   uint32_t m_data;

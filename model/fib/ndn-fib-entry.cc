@@ -83,7 +83,7 @@ FaceMetric::UpdateCounter (const bool nack)
   if (!m_counterStarted)
     {
       m_counterStarted = true;
-      Simulator::Schedule (Seconds(0.1), &FaceMetric::RecalculateNackRatio, this);
+      Simulator::Schedule (m_nackRatioRecalculateInterval, &FaceMetric::RecalculateNackRatio, this);
     }
 }
 
@@ -95,9 +95,16 @@ FaceMetric::RecalculateNackRatio ()
   if (m_nackRatio < 1e-6)
     m_nackRatio = 1e-6;
 
+  if (m_nack == 0)
+    m_nackRatioRecalculateInterval = Time::FromDouble(m_nackRatioRecalculateInterval.ToDouble(Time::MS) * 2, Time::MS);
+  else if (m_nack > 4)
+    m_nackRatioRecalculateInterval = Time::FromDouble(m_nackRatioRecalculateInterval.ToDouble(Time::MS) / 2, Time::MS);
+
+  NS_LOG_DEBUG (this << " NackRatioRecalculateInterval: " << m_nackRatioRecalculateInterval);
+
   m_nack = 0;
   m_data = 0;
-  Simulator::Schedule (Seconds(0.1), &FaceMetric::RecalculateNackRatio, this);
+  Simulator::Schedule (m_nackRatioRecalculateInterval, &FaceMetric::RecalculateNackRatio, this);
 }
 
 /////////////////////////////////////////////////////////////////////
