@@ -97,7 +97,7 @@ CongestionAware::DoPropagateInterest (Ptr<Face> inFace,
         {
           success = TrySendOutInterest (inFace, metricFace.GetFace (), header, origPacket, pitEntry);
 
-          if (!success)
+          if (!success && pitEntry->GetFibEntry ()->m_faces.size () > 1)
             pitEntry->GetFibEntry ()->UpdateFaceCounter (metricFace.GetFace (), true);
 
           break;
@@ -111,7 +111,7 @@ void
 CongestionAware::WillSatisfyPendingInterest (Ptr<Face> inFace,
                                             Ptr<pit::Entry> pitEntry)
 {
-  if (inFace != 0)
+  if (inFace != 0 && pitEntry->GetFibEntry ()->m_faces.size () > 1)
     {
       pitEntry->GetFibEntry ()->UpdateFaceCounter (inFace, false);
     }
@@ -126,7 +126,7 @@ CongestionAware::DidReceiveValidNack (Ptr<Face> inFace,
                                      Ptr<const Packet> origPacket,
                                      Ptr<pit::Entry> pitEntry)
 {
-  if (inFace != 0 &&
+  if (inFace != 0 && pitEntry->GetFibEntry ()->m_faces.size () > 1 &&
       (nackCode == Interest::NACK_CONGESTION ||
        nackCode == Interest::NACK_GIVEUP_PIT))
     {
