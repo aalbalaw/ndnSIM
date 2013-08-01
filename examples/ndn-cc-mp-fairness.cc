@@ -29,13 +29,14 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE"), congestion ("Local"), strategy ("CongestionAware"), competitor ("Both");
+  std::string consumer ("CUBIC"), shaper ("PIE"), congestion ("Local"), rtt ("Same"), strategy ("CongestionAware"), competitor ("Both");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("congestion", "Congestion type (Local/Remote)", congestion);
+  cmd.AddValue("rtt", "RTTs of the two paths (Same/Diff)", rtt);
   cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
   cmd.AddValue("competitor", "Presence of competing flows (None/Less/More/Both)", competitor);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
@@ -62,13 +63,19 @@ main (int argc, char *argv[])
   p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
   p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
   p2p.Install (nodes.Get (0), nodes.Get (1));
+  p2p.Install (nodes.Get (6), nodes.Get (1));
+  p2p.Install (nodes.Get (7), nodes.Get (1));
 
   if (congestion == "Local")
     {
       p2p.SetDeviceAttribute("DataRate", StringValue ("12Mbps"));
       p2p.Install (nodes.Get (1), nodes.Get (2));
       p2p.SetDeviceAttribute("DataRate", StringValue ("18Mbps"));
+      if (rtt == "Diff")
+        p2p.SetChannelAttribute("Delay", StringValue ("30ms"));
       p2p.Install (nodes.Get (1), nodes.Get (3));
+      if (rtt == "Diff")
+        p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
       p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
       p2p.Install (nodes.Get (2), nodes.Get (4));
       p2p.Install (nodes.Get (3), nodes.Get (5));
@@ -77,7 +84,11 @@ main (int argc, char *argv[])
     {
       p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
       p2p.Install (nodes.Get (1), nodes.Get (2));
+      if (rtt == "Diff")
+        p2p.SetChannelAttribute("Delay", StringValue ("30ms"));
       p2p.Install (nodes.Get (1), nodes.Get (3));
+      if (rtt == "Diff")
+        p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
       p2p.SetDeviceAttribute("DataRate", StringValue ("12Mbps"));
       p2p.Install (nodes.Get (2), nodes.Get (4));
       p2p.SetDeviceAttribute("DataRate", StringValue ("18Mbps"));
@@ -85,11 +96,6 @@ main (int argc, char *argv[])
     }
   else
     return -1;
-
-  p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
-  p2p.Install (nodes.Get (6), nodes.Get (1));
-  p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
-  p2p.Install (nodes.Get (7), nodes.Get (1));
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
