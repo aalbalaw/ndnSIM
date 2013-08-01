@@ -83,7 +83,8 @@ CongestionAware::DoPropagateInterest (Ptr<Face> inFace,
   double total = 0.0;
   BOOST_FOREACH (const fib::FaceMetric &metricFace, pitEntry->GetFibEntry ()->m_faces.get<fib::i_nth> ())
     {
-      NS_LOG_DEBUG (pitEntry->GetFibEntry ()->GetPrefix () << " " << metricFace.GetFace () << " NackRatio: " << metricFace.GetNackRatio ());
+      if (pitEntry->GetFibEntry ()->m_faces.size () > 1)
+        NS_LOG_DEBUG (pitEntry->GetFibEntry ()->GetPrefix () << " " << metricFace.GetFace () << " NackRatio: " << metricFace.GetNackRatio ());
       total += 1.0 / metricFace.GetNackRatio();
     }
 
