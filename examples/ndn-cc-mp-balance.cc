@@ -29,15 +29,14 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE"), strategy ("BestRoute");
-  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt");
+  std::string consumer ("WindowRelentless"), shaper ("PIE"), strategy ("CongestionAware");
+  std::string agg_trace ("aggregate-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
-  cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
   cmd.Parse (argc, argv);
 
   ndn::ShaperNetDeviceFace::QueueMode mode_enum;
@@ -52,24 +51,24 @@ main (int argc, char *argv[])
 
   // Setup topology
   NodeContainer nodes;
-  nodes.Create (7);
+  nodes.Create (8);
 
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("200"));
+  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("60"));
 
   PointToPointHelper p2p;
+  p2p.SetChannelAttribute("Delay", StringValue ("1ms"));
   p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
-  p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
   p2p.Install (nodes.Get (0), nodes.Get (1));
-  p2p.SetChannelAttribute("Delay", StringValue ("20ms"));
-  p2p.Install (nodes.Get (1), nodes.Get (2));
-  p2p.SetChannelAttribute("Delay", StringValue ("40ms"));
-  p2p.Install (nodes.Get (2), nodes.Get (3));
+  p2p.Install (nodes.Get (6), nodes.Get (1));
+  p2p.Install (nodes.Get (7), nodes.Get (1));
+  p2p.Install (nodes.Get (2), nodes.Get (4));
+  p2p.Install (nodes.Get (3), nodes.Get (5));
 
-  p2p.SetDeviceAttribute("DataRate", StringValue ("10Mbps"));
   p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
-  p2p.Install (nodes.Get (1), nodes.Get (4));
-  p2p.Install (nodes.Get (2), nodes.Get (5));
-  p2p.Install (nodes.Get (3), nodes.Get (6));
+  p2p.SetDeviceAttribute("DataRate", StringValue ("12Mbps"));
+  p2p.Install (nodes.Get (1), nodes.Get (2));
+  p2p.SetDeviceAttribute("DataRate", StringValue ("18Mbps"));
+  p2p.Install (nodes.Get (1), nodes.Get (3));
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
@@ -80,7 +79,7 @@ main (int argc, char *argv[])
       else
         ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
 
-      ndnHelper.EnableShaper (true, 200, 0.97, Seconds(0.1), mode_enum);
+      ndnHelper.EnableShaper (true, 60, 0.97, Seconds(0.1), mode_enum);
     }
   else
     {
@@ -91,9 +90,10 @@ main (int argc, char *argv[])
 
   // Getting containers for the consumer/producer
   Ptr<Node> c1 = nodes.Get (0);
+  Ptr<Node> c2 = nodes.Get (6);
+  Ptr<Node> c3 = nodes.Get (7);
   Ptr<Node> p1 = nodes.Get (4);
   Ptr<Node> p2 = nodes.Get (5);
-  Ptr<Node> p3 = nodes.Get (6);
 
   // Install consumer
   ndn::AppHelper *consumerHelper;
@@ -114,10 +114,18 @@ main (int argc, char *argv[])
 
   consumerHelper->SetAttribute ("LifeTime", TimeValue (Seconds (5.0)));
 
-  consumerHelper->SetPrefix ("/prefix");
+  consumerHelper->SetPrefix ("/prefix1");
+  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (70.0)));
+  consumerHelper->Install (c1);
+
+  consumerHelper->SetPrefix ("/prefix2");
   UniformVariable r (0.0, 5.0);
   consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper->Install (c1);
+  consumerHelper->Install (c2);
+
+  consumerHelper->SetPrefix ("/prefix3");
+  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+  consumerHelper->Install (c3);
 
   delete consumerHelper;
 
@@ -125,33 +133,37 @@ main (int argc, char *argv[])
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
   producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
 
-  producerHelper.SetPrefix ("/prefix");
+  producerHelper.SetPrefix ("/prefix1");
+  producerHelper.Install (p1);
+  producerHelper.SetPrefix ("/prefix2");
   producerHelper.Install (p1);
 
-  producerHelper.SetPrefix ("/prefix");
+  producerHelper.SetPrefix ("/prefix1");
+  producerHelper.Install (p2);
+  producerHelper.SetPrefix ("/prefix3");
   producerHelper.Install (p2);
 
-  producerHelper.SetPrefix ("/prefix");
-  producerHelper.Install (p3);
-
   // Manually add multipath routes
-  ndn::StackHelper::AddRoute (c1, "/prefix", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (c1, "/prefix1", nodes.Get (1), 1);
 
-  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix", p1, 1);
-  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix", nodes.Get (2), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix1", nodes.Get (2), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix1", nodes.Get (3), 1);
 
-  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix", nodes.Get (3), 1);
-  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix", p2, 1);
+  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix1", p1, 1);
+  ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix1", p2, 1);
 
-  ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix", p3, 1);
+  ndn::StackHelper::AddRoute (c2, "/prefix2", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix2", nodes.Get (2), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix2", p1, 1);
+
+  ndn::StackHelper::AddRoute (c3, "/prefix3", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix3", nodes.Get (3), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix3", p2, 1);
 
   Simulator::Stop (Seconds (130.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
-    aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
-
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
-    delayTracers = ndn::AppDelayTracer::InstallAll (delay_trace);
+    aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (1.0));
 
   Simulator::Run ();
   Simulator::Destroy ();

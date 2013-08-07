@@ -29,7 +29,7 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string consumer ("WindowRelentless"), shaper ("PIE");
   std::string bw_bottle ("10Mbps"), lat_bottle ("13ms"), bw_leg ("1Gbps"), lat_leg ("1ms"), qsize ("38");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 

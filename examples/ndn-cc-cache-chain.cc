@@ -31,7 +31,7 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string consumer ("WindowRelentless"), shaper ("PIE");
   std::string num_content ("10000"), q ("0.0"), s ("0.75"), cache_size ("100"), replace ("LRU");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
 

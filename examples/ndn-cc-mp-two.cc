@@ -21,31 +21,27 @@
 #include "ns3/ndnSIM-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndn-shaper-net-device-face.h"
-#include "ns3/ndn-consumer.h"
 #include <ns3/ndnSIM/utils/tracers/ndn-l3-aggregate-tracer.h>
 #include <ns3/ndnSIM/utils/tracers/ndn-app-delay-tracer.h>
-#include <ns3/ndnSIM/utils/tracers/ndn-cs-tracer.h>
 
 using namespace ns3;
 
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("WindowRelentless"), shaper ("PIE");
-  std::string num_content ("10000"), q ("0.0"), s ("0.75"), cache_size ("100"), replace ("LRU");
-  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"), cs_trace ("cs-trace.txt"); 
+  std::string consumer ("WindowRelentless"), shaper ("PIE"), strategy ("CongestionAware"), competitor ("Yes"), bw ("10Mbps"), lat ("10ms"), qsize ("30");
+  std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
-  cmd.AddValue("num_content", "Total number of contents", num_content);
-  cmd.AddValue("q", "Parameter of improve rank for Zipf-Mandelbrot", q);
-  cmd.AddValue("s", "Parameter of power for Zipf-Mandelbrot", s);
-  cmd.AddValue("cache_size", "Cache size at intermediate routers", cache_size);
-  cmd.AddValue("replace", "Cache replacement policy", replace);
+  cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
+  cmd.AddValue("competitor", "Presence of competing flows (No/Yes)", competitor);
+  cmd.AddValue("bw", "Link 2 bandwidth", bw);
+  cmd.AddValue("lat", "Link 2 latency", lat);
+  cmd.AddValue("qsize", "L2/Shaper queue size", qsize);
   cmd.AddValue("agg_trace", "Aggregate trace file name", agg_trace);
   cmd.AddValue("delay_trace", "App delay trace file name", delay_trace);
-  cmd.AddValue("cs_trace", "Content store trace file name", cs_trace);
   cmd.Parse (argc, argv);
 
   ndn::ShaperNetDeviceFace::QueueMode mode_enum;
@@ -58,64 +54,56 @@ main (int argc, char *argv[])
   else if (shaper != "None")
     return -1;
 
+  uint32_t qsize_int;
+  std::istringstream (qsize) >> qsize_int;
+
   // Setup topology
   NodeContainer nodes;
   nodes.Create (8);
 
-  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue ("75"));
+  Config::SetDefault ("ns3::DropTailQueue::MaxPackets", StringValue (qsize));
 
   PointToPointHelper p2p;
-  p2p.SetDeviceAttribute("DataRate", StringValue ("10Mbps"));
-  p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
-  p2p.Install (nodes.Get (0), nodes.Get (4));
-  p2p.Install (nodes.Get (1), nodes.Get (4));
-  p2p.Install (nodes.Get (2), nodes.Get (5));
+  p2p.SetChannelAttribute("Delay", StringValue ("1ms"));
+  p2p.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
+  p2p.Install (nodes.Get (0), nodes.Get (1));
+  p2p.Install (nodes.Get (6), nodes.Get (1));
+  p2p.Install (nodes.Get (7), nodes.Get (1));
+  p2p.Install (nodes.Get (2), nodes.Get (4));
   p2p.Install (nodes.Get (3), nodes.Get (5));
-  p2p.Install (nodes.Get (4), nodes.Get (6));
-  p2p.Install (nodes.Get (5), nodes.Get (6));
-  p2p.Install (nodes.Get (6), nodes.Get (7));
+
+  p2p.SetChannelAttribute("Delay", StringValue ("10ms"));
+  p2p.SetDeviceAttribute("DataRate", StringValue ("10Mbps"));
+  p2p.Install (nodes.Get (1), nodes.Get (2));
+
+  p2p.SetChannelAttribute("Delay", StringValue (lat));
+  p2p.SetDeviceAttribute("DataRate", StringValue (bw));
+  p2p.Install (nodes.Get (1), nodes.Get (3));
 
   // Install CCNx stack on all nodes
   ndn::StackHelper ndnHelper;
-
   if (shaper != "None")
     {
-      ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
-      ndnHelper.EnableShaper (true, 75, 0.97, Seconds(0.1), mode_enum);
+      if (strategy == "CongestionAware")
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true");
+      else
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
+
+      ndnHelper.EnableShaper (true, qsize_int, 0.97, Seconds(0.1), mode_enum);
     }
   else
     {
       ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute"); // No hop-by-hop interest shaping, no NACKs.
     }
-
   ndnHelper.SetContentStore ("ns3::ndn::cs::Nocache");
-  ndnHelper.Install (nodes.Get (0));
-  ndnHelper.Install (nodes.Get (1));
-  ndnHelper.Install (nodes.Get (2));
-  ndnHelper.Install (nodes.Get (3));
-  ndnHelper.Install (nodes.Get (7));
-
-  if (cache_size != "0")
-    {
-      if (replace == "LRU")
-        ndnHelper.SetContentStore ("ns3::ndn::cs::Lru", "MaxSize", cache_size);
-      else if (replace == "LFU")
-        ndnHelper.SetContentStore ("ns3::ndn::cs::Lfu", "MaxSize", cache_size);
-    }
-  ndnHelper.Install (nodes.Get (4));
-  ndnHelper.Install (nodes.Get (5));
-  ndnHelper.Install (nodes.Get (6));
-
-  // Installing global routing interface on all nodes
-  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
-  ndnGlobalRoutingHelper.InstallAll ();
+  ndnHelper.InstallAll ();
 
   // Getting containers for the consumer/producer
   Ptr<Node> c1 = nodes.Get (0);
-  Ptr<Node> c2 = nodes.Get (1);
-  Ptr<Node> c3 = nodes.Get (2);
-  Ptr<Node> c4 = nodes.Get (3);
-  Ptr<Node> p = nodes.Get (7);
+  Ptr<Node> c2 = nodes.Get (6);
+  Ptr<Node> c3 = nodes.Get (7);
+  Ptr<Node> p1 = nodes.Get (4);
+  Ptr<Node> p2 = nodes.Get (5);
 
   // Install consumer
   ndn::AppHelper *consumerHelper;
@@ -134,46 +122,64 @@ main (int argc, char *argv[])
   else
     return -1;
 
-  consumerHelper->SetAttribute ("RequestMode", EnumValue (ndn::Consumer::ZIPF_MANDELBROT));
-  consumerHelper->SetAttribute ("NumberOfContents", StringValue (num_content));
-  consumerHelper->SetAttribute ("Q", StringValue (q));
-  consumerHelper->SetAttribute ("S", StringValue (s));
   consumerHelper->SetAttribute ("LifeTime", TimeValue (Seconds (5.0)));
 
-  consumerHelper->SetPrefix ("/p");
+  consumerHelper->SetPrefix ("/prefix1");
   UniformVariable r (0.0, 5.0);
   consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
   consumerHelper->Install (c1);
-  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper->Install (c2);
-  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper->Install (c3);
-  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
-  consumerHelper->Install (c4);
+
+  if (competitor == "Yes")
+    {
+      consumerHelper->SetPrefix ("/prefix2");
+      consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+      consumerHelper->Install (c2);
+
+      consumerHelper->SetPrefix ("/prefix3");
+      consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (r.GetValue ())));
+      consumerHelper->Install (c3);
+    }
 
   delete consumerHelper;
 
-  // Register prefix with global routing controller and install producer
+  // Install producer
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
   producerHelper.SetAttribute ("PayloadSize", StringValue("1000"));
 
-  ndnGlobalRoutingHelper.AddOrigins ("/p", p);
-  producerHelper.SetPrefix ("/p");
-  producerHelper.Install (p);
+  producerHelper.SetPrefix ("/prefix1");
+  producerHelper.Install (p1);
+  producerHelper.SetPrefix ("/prefix2");
+  producerHelper.Install (p1);
 
-  // Calculate and install FIBs
-  ndnGlobalRoutingHelper.CalculateRoutes ();
+  producerHelper.SetPrefix ("/prefix1");
+  producerHelper.Install (p2);
+  producerHelper.SetPrefix ("/prefix3");
+  producerHelper.Install (p2);
 
-  Simulator::Stop (Seconds (70.1));
+  // Manually add multipath routes
+  ndn::StackHelper::AddRoute (c1, "/prefix1", nodes.Get (1), 1);
+
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix1", nodes.Get (2), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix1", nodes.Get (3), 1);
+
+  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix1", p1, 1);
+  ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix1", p2, 1);
+
+  ndn::StackHelper::AddRoute (c2, "/prefix2", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix2", nodes.Get (2), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (2), "/prefix2", p1, 1);
+
+  ndn::StackHelper::AddRoute (c3, "/prefix3", nodes.Get (1), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix3", nodes.Get (3), 1);
+  ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix3", p2, 1);
+
+  Simulator::Stop (Seconds (130.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::AppDelayTracer> > >
     delayTracers = ndn::AppDelayTracer::InstallAll (delay_trace);
-
-  boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::CsTracer> > >
-    csTracers = ndn::CsTracer::InstallAll (cs_trace, Seconds (10.0));
 
   Simulator::Run ();
   Simulator::Destroy ();

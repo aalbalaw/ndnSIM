@@ -27,7 +27,7 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("CUBIC"), shaper ("PIE");
+  std::string consumer ("WindowRelentless"), shaper ("PIE");
   std::string bw_bottle ("10Mbps"), lat_bottle ("13ms"), qsize ("38");
 
   CommandLine cmd;

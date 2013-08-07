@@ -30,7 +30,7 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string twoway ("0"), consumer ("CUBIC"), shaper ("PIE");
+  std::string twoway ("0"), consumer ("WindowRelentless"), shaper ("PIE");
   std::string bw_a ("10Mbps"), bw_b ("10Mbps"), lat ("13ms"), qsize ("38");
   std::string isize ("0"), payload_0 ("1000"), payload_3 ("1000"); 
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
