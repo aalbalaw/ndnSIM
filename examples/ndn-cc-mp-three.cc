@@ -29,7 +29,7 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("WindowRelentless"), shaper ("PIE"), strategy ("BestRoute");
+  std::string consumer ("WindowRelentless"), shaper ("PIE"), strategy ("CongestionAware");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt");
 
   CommandLine cmd;

@@ -146,6 +146,9 @@ Consumer::GetRequestMode (void)
 void
 Consumer::SetNumberOfContents (uint32_t numOfContents)
 {
+  if (m_requestMode != ZIPF_MANDELBROT)
+    return;
+
   m_N = numOfContents;
 
   NS_LOG_DEBUG (m_q << " and " << m_s << " and " << m_N);
@@ -174,6 +177,9 @@ Consumer::GetNumberOfContents () const
 void
 Consumer::SetQ (double q)
 {
+  if (m_requestMode != ZIPF_MANDELBROT)
+    return;
+
   m_q = q;
   SetNumberOfContents (m_N);
 }
@@ -187,6 +193,9 @@ Consumer::GetQ () const
 void
 Consumer::SetS (double s)
 {
+  if (m_requestMode != ZIPF_MANDELBROT)
+    return;
+
   m_s = s;
   SetNumberOfContents (m_N);
 }
