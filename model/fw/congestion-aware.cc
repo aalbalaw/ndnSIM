@@ -31,6 +31,7 @@
 #include "ns3/ndn-content-store.h"
 #include "ns3/random-variable.h"
 #include "ns3/ndnSIM/utils/ndn-fw-hop-count-tag.h"
+#include "ns3/ndnSIM/utils/ndn-fw-pmin-tag.h"
 
 #include "ns3/assert.h"
 #include "ns3/ptr.h"
@@ -121,6 +122,83 @@ CongestionAware::WillSatisfyPendingInterest (Ptr<Face> inFace,
 }
 
 void
+CongestionAware::DidExhaustForwardingOptions (Ptr<Face> inFace,
+                                             Ptr<const Interest> header,
+                                             Ptr<const Packet> origPacket,
+                                             Ptr<pit::Entry> pitEntry)
+{
+  if (m_nacksEnabled)
+    {
+      Ptr<Packet> packet = Create<Packet> ();
+      Ptr<Interest> nackHeader = Create<Interest> (*header);
+      nackHeader->SetNack (Interest::NACK_GIVEUP_PIT);
+      packet->AddHeader (*nackHeader);
+
+      FwHopCountTag hopCountTag;
+      if (origPacket->PeekPacketTag (hopCountTag))
+        {
+          packet->AddPacketTag (hopCountTag);
+        }
+      else
+        {
+          NS_LOG_DEBUG ("No FwHopCountTag tag associated with original Interest");
+        }
+
+      if (pitEntry->GetFibEntry ()->m_faces.size () > 1)
+        {
+          double pmin = 2.0;
+          BOOST_FOREACH (const fib::FaceMetric &metricFace, pitEntry->GetFibEntry ()->m_faces.get<fib::i_nth> ())
+            {
+              if (metricFace.GetNackRatio() != 1e-6 && metricFace.GetNackRatio() < pmin)
+                pmin = metricFace.GetNackRatio();
+            }
+
+          if (pmin == 2.0)
+            {
+              FwPminTag pminTag;
+              if (origPacket->PeekPacketTag (pminTag))
+                {
+                  packet->AddPacketTag (pminTag);
+                }
+            }
+          else
+            {
+              FwPminTag pminTag;
+              if (origPacket->PeekPacketTag (pminTag) && pmin > pminTag.GetPmin())
+                {
+                  packet->AddPacketTag (pminTag);
+                }
+              else
+                {
+                  pminTag.SetPmin (pmin);
+                  packet->AddPacketTag (pminTag);
+                }
+            }
+        }
+      else
+        {
+          FwPminTag pminTag;
+          if (origPacket->PeekPacketTag (pminTag))
+            {
+              packet->AddPacketTag (pminTag);
+            }
+        }
+
+      BOOST_FOREACH (const pit::IncomingFace &incoming, pitEntry->GetIncoming ())
+        {
+          NS_LOG_DEBUG ("Send NACK for " << boost::cref (nackHeader->GetName ()) << " to " << boost::cref (*incoming.m_face));
+          incoming.m_face->Send (packet->Copy ());
+
+          m_outNacks (nackHeader, incoming.m_face);
+        }
+
+      pitEntry->ClearOutgoing (); // to force erasure of the record
+    }
+
+  ForwardingStrategy::DidExhaustForwardingOptions (inFace, header, origPacket, pitEntry);
+}
+
+void
 CongestionAware::DidReceiveValidNack (Ptr<Face> inFace,
                                      uint32_t nackCode,
                                      Ptr<const Interest> header,
@@ -171,6 +249,12 @@ CongestionAware::DidReceiveValidNack (Ptr<Face> inFace,
       else
         {
           NS_LOG_DEBUG ("No FwHopCountTag tag associated with received NACK");
+        }
+
+      FwPminTag pminTag;
+      if (origPacket->PeekPacketTag (pminTag))
+        {
+          nonNackInterest->AddPacketTag (pminTag);
         }
 
       DidExhaustForwardingOptions (inFace, nonNackHeader, nonNackInterest, pitEntry);

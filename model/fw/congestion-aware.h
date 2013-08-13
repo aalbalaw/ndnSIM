@@ -51,6 +51,12 @@ protected:
                               Ptr<pit::Entry> pitEntry);
 
   virtual void
+  DidExhaustForwardingOptions (Ptr<Face> inFace,
+                               Ptr<const Interest> header,
+                               Ptr<const Packet> packet,
+                               Ptr<pit::Entry> pitEntry);
+
+  virtual void
   DidReceiveValidNack (Ptr<Face> incomingFace,
                        uint32_t nackCode,
                        Ptr<const Interest> header,
