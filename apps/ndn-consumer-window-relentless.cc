@@ -19,6 +19,9 @@
 #include "ndn-consumer-window-relentless.h"
 #include "ns3/ndn-interest.h"
 #include "ns3/log.h"
+#include "ns3/simulator.h"
+#include "ns3/packet.h"
+#include "ns3/ndnSIM/utils/ndn-fw-pmin-tag.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -49,6 +52,12 @@ ConsumerWindowRelentless::ConsumerWindowRelentless ()
   : ConsumerWindow ()
   , m_ssthresh (std::numeric_limits<uint32_t>::max ())
   , m_window_cnt (0)
+  , m_alpha (1.0)
+  , m_nackRatio (0.0)
+  , m_nackRatioRecalculateInterval (Seconds (0.1))
+  , m_counterStarted (false)
+  , m_nack (0)
+  , m_data (0)
 {
 }
 
@@ -68,7 +77,7 @@ ConsumerWindowRelentless::AdjustWindowOnContentObject (const Ptr<const ContentOb
   else
     {
       // in congestion avoidance phase
-      if (m_window_cnt >= m_window)
+      if (m_window_cnt >= m_window / m_alpha)
         {
           m_window++;
           m_window_cnt = 0;
@@ -79,6 +88,8 @@ ConsumerWindowRelentless::AdjustWindowOnContentObject (const Ptr<const ContentOb
         }
     }
 
+  m_data++;
+
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
 }
 
@@ -88,7 +99,41 @@ ConsumerWindowRelentless::AdjustWindowOnNack (const Ptr<const Interest> &interes
   m_window = std::max<uint32_t> (1, m_window - 1);
   m_ssthresh = m_window;
 
+  FwPminTag pminTag;
+  if (payload->RemovePacketTag (pminTag))
+    {
+      if (m_nackRatio > pminTag.GetPmin ())
+        m_alpha = m_nackRatio / pminTag.GetPmin ();
+      else
+        m_alpha = 1.0;
+
+      NS_LOG_DEBUG ("pmin: " << pminTag.GetPmin () << " pavg: " << m_nackRatio << " alpha: " << m_alpha);
+    }
+
+  m_nack++;
+  if (!m_counterStarted)
+    {
+      m_counterStarted = true;
+      Simulator::Schedule (m_nackRatioRecalculateInterval, &ConsumerWindowRelentless::RecalculateNackRatio, this);
+    }
+
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
+}
+
+void
+ConsumerWindowRelentless::RecalculateNackRatio ()
+{
+  double sample = m_nack>0 ? 1.0 * m_nack / (m_nack + m_data) : 0.0;
+  m_nackRatio = m_nackRatio * 0.875 + sample * 0.125;
+
+  if (m_nack == 0)
+    m_nackRatioRecalculateInterval = Time::FromDouble(m_nackRatioRecalculateInterval.ToDouble(Time::MS) * 2, Time::MS);
+  else if (m_nack > 4)
+    m_nackRatioRecalculateInterval = Time::FromDouble(m_nackRatioRecalculateInterval.ToDouble(Time::MS) / 2, Time::MS);
+
+  m_nack = 0;
+  m_data = 0;
+  Simulator::Schedule (m_nackRatioRecalculateInterval, &ConsumerWindowRelentless::RecalculateNackRatio, this);
 }
 
 } // namespace ndn

@@ -37,9 +37,17 @@ protected:
   virtual void AdjustWindowOnNack (const Ptr<const Interest> &interest, Ptr<Packet> payload);
   virtual void AdjustWindowOnContentObject (const Ptr<const ContentObject> &contentObject,
                                             Ptr<Packet> payload);
+  void RecalculateNackRatio ();
 
   TracedValue<uint32_t> m_ssthresh;
   uint32_t m_window_cnt;
+  double m_alpha;
+
+  double m_nackRatio;
+  Time m_nackRatioRecalculateInterval;
+  bool m_counterStarted;
+  uint32_t m_nack;
+  uint32_t m_data;
 };
 
 } // namespace ndn
