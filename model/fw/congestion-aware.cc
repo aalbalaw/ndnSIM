@@ -40,6 +40,7 @@
 #include "ns3/boolean.h"
 #include "ns3/string.h"
 
+#include <math.h>
 #include <boost/ref.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lambda/lambda.hpp>
@@ -62,7 +63,13 @@ CongestionAware::GetTypeId (void)
     .SetGroupName ("Ndn")
     .SetParent<Nacks> ()
     .AddConstructor <CongestionAware> ()
+
+    .AddAttribute ("K", "Make traffic fraction proportional to (1/p)^k",
+                   UintegerValue (1),
+                   MakeUintegerAccessor (&CongestionAware::m_k),
+                   MakeUintegerChecker<uint32_t> ())
     ;
+
   return tid;
 }
 
@@ -86,7 +93,7 @@ CongestionAware::DoPropagateInterest (Ptr<Face> inFace,
     {
       if (pitEntry->GetFibEntry ()->m_faces.size () > 1)
         NS_LOG_DEBUG (pitEntry->GetFibEntry ()->GetPrefix () << " " << metricFace.GetFace () << " NackRatio: " << metricFace.GetNackRatio ());
-      total += 1.0 / metricFace.GetNackRatio();
+      total += pow (1.0 / metricFace.GetNackRatio(), m_k);
     }
 
   UniformVariable r (0, 1.0);
@@ -94,7 +101,7 @@ CongestionAware::DoPropagateInterest (Ptr<Face> inFace,
   double p_sum = 0;
   BOOST_FOREACH (const fib::FaceMetric &metricFace, pitEntry->GetFibEntry ()->m_faces.get<fib::i_nth> ())
     {
-      p_sum += 1.0 / (metricFace.GetNackRatio() * total);
+      p_sum += pow (1.0 / metricFace.GetNackRatio(), m_k) / total;
       if (p_random <= p_sum)
         {
           success = TrySendOutInterest (inFace, metricFace.GetFace (), header, origPacket, pitEntry);

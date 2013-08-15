@@ -64,6 +64,7 @@ protected:
                        Ptr<pit::Entry> pitEntry);
 private:
   typedef Nacks super;
+  uint32_t m_k;
 };
 
 } // namespace fw
