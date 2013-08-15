@@ -28,6 +28,9 @@ def build(bld):
     obj = bld.create_ns3_program('ndn-cc-mp-three', all_modules)
     obj.source = 'ndn-cc-mp-three.cc'
 
+    obj = bld.create_ns3_program('ndn-cc-mp-dynamic', all_modules)
+    obj.source = 'ndn-cc-mp-dynamic.cc'
+
     obj = bld.create_ns3_program('ndn-cc-mp-two', all_modules)
     obj.source = 'ndn-cc-mp-two.cc'
 
