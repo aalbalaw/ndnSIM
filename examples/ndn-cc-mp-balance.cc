@@ -75,7 +75,7 @@ main (int argc, char *argv[])
   if (shaper != "None")
     {
       if (strategy == "CongestionAware")
-        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true");
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true", "K", "2");
       else
         ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
 
@@ -115,7 +115,7 @@ main (int argc, char *argv[])
   consumerHelper->SetAttribute ("LifeTime", TimeValue (Seconds (5.0)));
 
   consumerHelper->SetPrefix ("/prefix1");
-  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (70.0)));
+  consumerHelper->SetAttribute ("StartTime", TimeValue (Seconds (40.0)));
   consumerHelper->Install (c1);
 
   consumerHelper->SetPrefix ("/prefix2");
@@ -160,7 +160,7 @@ main (int argc, char *argv[])
   ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix3", nodes.Get (3), 1);
   ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix3", p2, 1);
 
-  Simulator::Stop (Seconds (130.1));
+  Simulator::Stop (Seconds (70.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (1.0));

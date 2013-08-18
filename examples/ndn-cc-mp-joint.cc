@@ -89,7 +89,7 @@ main (int argc, char *argv[])
   if (shaper != "None")
     {
       if (strategy == "CongestionAware")
-        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true");
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true", "K", "2");
       else
         ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
 

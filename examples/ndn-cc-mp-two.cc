@@ -29,13 +29,15 @@ using namespace ns3;
 int
 main (int argc, char *argv[])
 {
-  std::string consumer ("WindowRelentless"), shaper ("PIE"), strategy ("CongestionAware"), competitor ("Yes"), bw ("10Mbps"), lat ("10ms"), qsize ("30");
+  std::string consumer ("WindowRelentless"), shaper ("PIE"), strategy ("CongestionAware"), k ("2");
+  std::string competitor ("Yes"), bw ("10Mbps"), lat ("10ms"), qsize ("30");
   std::string agg_trace ("aggregate-trace.txt"), delay_trace ("app-delays-trace.txt"); 
 
   CommandLine cmd;
   cmd.AddValue("consumer", "Consumer type (AIMD/CUBIC/RAAQM/WindowRelentless/RateRelentless/RateFeedback)", consumer);
   cmd.AddValue("shaper", "Shaper mode (None/DropTail/PIE/CoDel)", shaper);
   cmd.AddValue("strategy", "Forwarding strategy (BestRoute/CongestionAware)", strategy);
+  cmd.AddValue("k", "Parameter K of CongestionAware forwarding strategy", k);
   cmd.AddValue("competitor", "Presence of competing flows (No/Yes)", competitor);
   cmd.AddValue("bw", "Link 2 bandwidth", bw);
   cmd.AddValue("lat", "Link 2 latency", lat);
@@ -85,7 +87,7 @@ main (int argc, char *argv[])
   if (shaper != "None")
     {
       if (strategy == "CongestionAware")
-        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true");
+        ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::CongestionAware", "EnableNACKs", "true", "K", k);
       else
         ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute", "EnableNACKs", "true");
 
@@ -173,7 +175,7 @@ main (int argc, char *argv[])
   ndn::StackHelper::AddRoute (nodes.Get (1), "/prefix3", nodes.Get (3), 1);
   ndn::StackHelper::AddRoute (nodes.Get (3), "/prefix3", p2, 1);
 
-  Simulator::Stop (Seconds (130.1));
+  Simulator::Stop (Seconds (70.1));
 
   boost::tuple< boost::shared_ptr<std::ostream>, std::list<Ptr<ndn::L3AggregateTracer> > >
     aggTracers = ndn::L3AggregateTracer::InstallAll (agg_trace, Seconds (10.0));
