@@ -54,7 +54,6 @@ ConsumerWindowRelentless::ConsumerWindowRelentless ()
   , m_window_cnt (0)
   , m_alpha (1.0)
   , m_nackRatio (0.0)
-  , m_nackRatioRecalculateInterval (Seconds (0.1))
   , m_counterStarted (false)
   , m_nack (0)
   , m_data (0)
@@ -114,7 +113,7 @@ ConsumerWindowRelentless::AdjustWindowOnNack (const Ptr<const Interest> &interes
   if (!m_counterStarted)
     {
       m_counterStarted = true;
-      Simulator::Schedule (m_nackRatioRecalculateInterval, &ConsumerWindowRelentless::RecalculateNackRatio, this);
+      Simulator::Schedule (Seconds (0.1), &ConsumerWindowRelentless::RecalculateNackRatio, this);
     }
 
   NS_LOG_DEBUG ("Window: " << m_window << ", InFlight: " << m_inFlight << ", Ssthresh: " << m_ssthresh);
@@ -126,14 +125,9 @@ ConsumerWindowRelentless::RecalculateNackRatio ()
   double sample = m_nack>0 ? 1.0 * m_nack / (m_nack + m_data) : 0.0;
   m_nackRatio = m_nackRatio * 0.875 + sample * 0.125;
 
-  if (m_nack == 0)
-    m_nackRatioRecalculateInterval = Time::FromDouble(m_nackRatioRecalculateInterval.ToDouble(Time::MS) * 2, Time::MS);
-  else if (m_nack > 4)
-    m_nackRatioRecalculateInterval = Time::FromDouble(m_nackRatioRecalculateInterval.ToDouble(Time::MS) / 2, Time::MS);
-
   m_nack = 0;
   m_data = 0;
-  Simulator::Schedule (m_nackRatioRecalculateInterval, &ConsumerWindowRelentless::RecalculateNackRatio, this);
+  Simulator::Schedule (Seconds (0.1), &ConsumerWindowRelentless::RecalculateNackRatio, this);
 }
 
 } // namespace ndn

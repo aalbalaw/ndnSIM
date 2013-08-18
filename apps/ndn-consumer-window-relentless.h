@@ -44,7 +44,6 @@ protected:
   double m_alpha;
 
   double m_nackRatio;
-  Time m_nackRatioRecalculateInterval;
   bool m_counterStarted;
   uint32_t m_nack;
   uint32_t m_data;
